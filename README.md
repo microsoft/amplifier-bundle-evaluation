@@ -1,6 +1,30 @@
-# amplifier-bundle-evaluation
+# Amplifier Bundle Evaluation
 
-Evaluation bundle for the Amplifier project.
+A one-stop-shop for evaluating AI agents, bundles, and recipes across the Amplifier ecosystem. Provides an `evaluation` mode and supporting context for running structured evaluations against rubrics.
+
+## Installation
+
+### Prerequisites
+
+- An existing Amplifier installation
+- A bundle that provides a runtime (e.g. `amplifier-foundation`) composed in the same session
+- `amplifier-bundle-modes` composed in the same session, since the evaluation mode is delivered through that capability
+
+### Amplifier Bundle
+
+To compose it onto an existing setup:
+
+```bash
+amplifier bundle add "git+https://github.com/microsoft/amplifier-bundle-evaluation@main#subdirectory=behaviors/evaluation.yaml" --app
+```
+
+`--app` composes the bundle onto every Amplifier session. Remove it to only register the bundle for later activation with `amplifier bundle use`.
+
+If you also need the modes capability (required for the `evaluation` mode to be discoverable):
+
+```bash
+amplifier bundle add "git+https://github.com/microsoft/amplifier-bundle-modes@main#subdirectory=behaviors/modes.yaml" --app
+```
 
 ## Contributing
 

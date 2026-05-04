@@ -1,0 +1,8 @@
+bundle:
+  name: evaluation-behavior
+  version: 0.1.0
+  description: Evaluation expert for the Amplifier ecosystem 
+
+context:
+  include:
+    - evaluation:context/evaluation-awareness.md
