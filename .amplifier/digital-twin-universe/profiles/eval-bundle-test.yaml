@@ -1,0 +1,121 @@
+# Validates the scaffolded amplifier-bundle-evaluation bundle.
+# Pulls the bundle from a local Gitea mirror
+# while everything else (foundation, provider, CLI) comes from upstream GitHub/PyPI.
+#
+# Base image: Debian 12 (bookworm).
+#
+# -----------------------------------------------------------------------------
+# Running this profile against UNCOMMITTED local changes (no commit needed)
+# -----------------------------------------------------------------------------
+# The DTU pulls the bundle from a local Gitea Docker mirror via url_rewrites.
+# To get your working-tree changes into Gitea WITHOUT making a local git commit,
+# use `git commit-tree` to write a one-off commit object that is pushed to Gitea
+# but never lands on your local branch.
+#
+# Prerequisite: a `gitea` remote on the bundle repo with credentials embedded
+# in the URL (http://admin:TOKEN@host:port/admin/repo.git). The setup-digital-twin
+# agent adds this automatically; otherwise add it manually.
+#
+# Run from the bundle repo root:
+#
+#   # 1. Pull URL + token out of the gitea remote.
+#   GITEA_REMOTE=$(git remote get-url gitea)
+#   GITEA_TOKEN=$(echo "$GITEA_REMOTE" | sed -E 's#.*://admin:([^@]+)@.*#\1#')
+#   GITEA_URL=$(echo  "$GITEA_REMOTE" | sed -E 's#http://admin:[^@]+@([^/]+)/.*#http://\1#')
+#
+#   # 2. Snapshot working tree -> commit object -> push to gitea/main.
+#   #    HEAD never moves; nothing is staged after this finishes.
+#   git add -A
+#   TREE=$(git write-tree)
+#   COMMIT=$(echo "DTU sync $(date -Iseconds)" | git commit-tree "$TREE" -p HEAD)
+#   git push gitea "$COMMIT:refs/heads/main" --force
+#   git reset    # unstages everything; working tree stays exactly as you left it
+#
+#   # 3a. If the DTU is already running, refresh it. The `update` command
+#   #     resolves the profile by looking for `profiles/<name>.yaml` relative
+#   #     to the cwd, so cd to the directory that contains `profiles/`:
+#   ( cd <path/to>/.amplifier/digital-twin-universe && \
+#     amplifier-digital-twin update <DTU_NAME> \
+#       --var GITEA_URL="$GITEA_URL" --var GITEA_TOKEN="$GITEA_TOKEN" )
+#
+#   # 3b. If launching from scratch, just pass the profile path explicitly:
+#   amplifier-digital-twin launch <path/to/this/profile.yaml> \
+#     --var GITEA_URL="$GITEA_URL" --var GITEA_TOKEN="$GITEA_TOKEN"
+#
+# After this, every iteration is just: edit -> repeat steps 2 and 3a.
+# No commits ever land on your local branch.
+# -----------------------------------------------------------------------------
+
+name: eval-bundle-test
+description: >
+  Validates that amplifier-bundle-evaluation loads correctly in a real Amplifier
+  environment, that the eval-orchestrator agent is registered and delegatable,
+  and that the awareness context appears in sessions.
+
+base:
+  image: images:debian/12
+
+# Redirect the bundle's GitHub URL to the local Gitea mirror so the DTU pulls
+# the local scaffold commit instead of upstream main (which lacks the scaffold).
+url_rewrites:
+  auth:
+    username: admin
+    token_var: GITEA_TOKEN
+  rules:
+    - match: github.com/microsoft/amplifier-bundle-evaluation
+      target: ${GITEA_URL}/admin/amplifier-bundle-evaluation
+
+passthrough:
+  allow_external: true
+  services:
+    - name: anthropic
+      key_env: ANTHROPIC_API_KEY
+
+provision:
+  setup_cmds:
+    # Debian base — uses deb.debian.org by default, not archive.ubuntu.com.
+    - apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates
+
+    # Install uv
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    # Install Amplifier CLI from upstream
+    - |
+      export PATH="/root/.local/bin:$PATH"
+      uv tool install git+https://github.com/microsoft/amplifier@main
+
+    # Configure provider for smoke test
+    - |
+      mkdir -p /root/.amplifier
+      cat > /root/.amplifier/settings.yaml << EOF
+      config:
+        providers:
+          - module: provider-anthropic
+            source: git+https://github.com/microsoft/amplifier-module-provider-anthropic@main
+            config:
+              api_key: $ANTHROPIC_API_KEY
+      EOF
+
+    # Add the evaluation bundle. url_rewrites transparently redirects this
+    # GitHub URL to the local Gitea mirror with the local scaffold commit.
+    - |
+      export PATH="/root/.local/bin:$PATH"
+      amplifier bundle add git+https://github.com/microsoft/amplifier-bundle-evaluation@main --app
+
+    # Sanity reporting in provision logs
+    - |
+      export PATH="/root/.local/bin:$PATH"
+      amplifier --version
+      amplifier bundle list
+
+    - mkdir -p /home/user/project
+
+update:
+  cmds:
+    - |
+      export PATH="/root/.local/bin:$PATH"
+      amplifier update --yes --force
+
+readiness:
+  - name: amplifier-installed
+    command: 'PATH=/root/.local/bin:$PATH amplifier --version'
