@@ -1,0 +1,89 @@
+# Eval example 01 — BEFORE (foundation@main, with foundation:explorer agent)
+#
+# Launch with:
+#   amplifier-digital-twin launch profiles/before.yaml \
+#     --var GITEA_URL=http://localhost:10110 \
+#     --var GITEA_TOKEN=<token> \
+#     --name eval01-before
+#
+# Pre-launch requirements:
+#   - amplifier-foundation already mirrored to Gitea on branch `main`
+#   - ANTHROPIC_API_KEY set in the host environment
+
+name: eval01-explorer-removal-before
+description: >
+  BEFORE arm of example 01. Foundation installed from main branch
+  (foundation:explorer agent present). Used to compare against the
+  remove-explorer branch.
+
+base:
+  image: ubuntu:24.04
+
+# Redirect amplifier-foundation clones to the Gitea mirror.
+# Branch selection happens in `amplifier bundle add ...@<branch>`.
+url_rewrites:
+  auth:
+    username: admin
+    token_var: GITEA_TOKEN
+  rules:
+    - match: github.com/microsoft/amplifier-foundation
+      target: ${GITEA_URL}/admin/amplifier-foundation
+    - match: github.com/microsoft/amplifier-bundle-context-intelligence
+      target: ${GITEA_URL}/admin/amplifier-bundle-context-intelligence
+
+passthrough:
+  allow_external: true
+  services:
+    - name: anthropic
+      key_env: ANTHROPIC_API_KEY
+
+provision:
+  setup_cmds:
+    - apt-get update && apt-get install -y git curl
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    # Install Amplifier CLI from upstream (no CLI changes here).
+    - |
+      export PATH="/root/.local/bin:$PATH"
+      uv tool install git+https://github.com/microsoft/amplifier
+
+    # Configure provider. Heredoc is unquoted so ANTHROPIC_API_KEY
+    # (provided via passthrough.services) is expanded into the file at
+    # provision time. The single-quoted variant ('EOF') would write the
+    # literal string and amplifier-module-provider-anthropic does not do
+    # env-var substitution at read time.
+    - |
+      mkdir -p /root/.amplifier
+      cat > /root/.amplifier/settings.yaml <<EOF
+      config:
+        providers:
+          - module: provider-anthropic
+            source: git+https://github.com/microsoft/amplifier-module-provider-anthropic@main
+            config:
+              api_key: ${ANTHROPIC_API_KEY}
+      EOF
+
+    # Add foundation bundle from main branch (rewritten to Gitea).
+    - |
+      export PATH="/root/.local/bin:$PATH"
+      amplifier bundle add git+https://github.com/microsoft/amplifier-foundation@main --app
+
+    # Add context-intelligence bundle (upstream, unmodified).
+    - |
+      export PATH="/root/.local/bin:$PATH"
+      amplifier bundle add git+https://github.com/microsoft/amplifier-bundle-context-intelligence@main
+
+    # Clone the target repo for the eval prompt.
+    - mkdir -p /work && git clone --depth 1 https://github.com/microsoft/agent-framework /work/agent-framework
+
+    # Smoke-verify install
+    - |
+      export PATH="/root/.local/bin:$PATH"
+      amplifier --version
+      amplifier bundle list
+
+readiness:
+  - name: amplifier-installed
+    command: 'PATH=/root/.local/bin:$PATH amplifier --version'
+  - name: agent-framework-cloned
+    command: 'test -d /work/agent-framework/.git && echo OK'

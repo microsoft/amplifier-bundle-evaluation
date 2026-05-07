@@ -2,6 +2,11 @@
 
 A one-stop-shop for evaluating AI agents, bundles, and recipes across the Amplifier ecosystem. Provides an `evaluation` mode and supporting context for running structured evaluations against rubrics.
 
+Example Uses:
+
+- "I have changes to an Amplifier bundle I would like to evaluate the impact of. Can you help me measure it?"
+
+
 ## Installation
 
 ### Prerequisites
