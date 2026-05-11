@@ -73,7 +73,7 @@ passthrough:
 
 provision:
   setup_cmds:
-    # Debian base — uses deb.debian.org by default, not archive.ubuntu.com.
+    # Debian base, uses deb.debian.org by default, not archive.ubuntu.com.
     - apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates
 
     # Install uv

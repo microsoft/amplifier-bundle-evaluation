@@ -1,12 +1,12 @@
 # Example 01: Foundation Explorer Agent Removal
 
-A worked example of the evaluation bundle in use. Compares the `foundation:explorer` agent's contribution by running the same prompt against two Amplifier installs — one with the agent, one without.
+A worked example of the evaluation bundle in use. Compares the `foundation:explorer` agent's contribution by running the same prompt against two Amplifier installs: one with the agent, one without.
 
 Also serves as the prescribed template for new evaluation examples.
 
 ## Target of evaluation
 
-The `foundation:explorer` agent in `amplifier-foundation` — the "deep local-context reconnaissance" specialist for multi-file exploration. We measure whether removing it changes outputs, resource cost, and delegation behavior on a real exploration task.
+The `foundation:explorer` agent in `amplifier-foundation`, the "deep local-context reconnaissance" specialist for multi-file exploration. We measure whether removing it changes outputs, resource cost, and delegation behavior on a real exploration task.
 
 ## Hypothesis
 

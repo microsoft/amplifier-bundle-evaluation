@@ -1,4 +1,4 @@
-# Eval example 01 — BEFORE (foundation@main, with foundation:explorer agent)
+# Eval example 01: BEFORE (foundation@main, with foundation:explorer agent)
 #
 # Launch with:
 #   amplifier-digital-twin launch profiles/before.yaml \
