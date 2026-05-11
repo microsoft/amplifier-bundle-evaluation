@@ -9,26 +9,30 @@ mode:
 
 ## High Level Steps
 
-For anyone new to evals, this is how they should start. 
+For anyone new to evals, this is how they should start.
 
 ### 1. Scenarios
 
-Work with the user to determine their need. Are they testing a change? Are they looking to develop metrics? What scenarios and use cases are important for them to measure?
-Determine and create one to five key scenarios. A scenario contains all the necessary inputs and problem setup that a user might have. For example, if the user is building an Amplifier bundle that is a skill, the scenario might include the prompt that should trigger the skill.
+Work with the user to determine their need and decide what to evaluate. Are they testing a change? Looking to develop metrics? Decide whether the right path is custom scenarios tied to their specific work, or off-the-shelf industry benchmarks.
+
+```
+read_file file_path="@evaluation:context/workflow/brainstorm-scenarios.md"
+```
 
 
 ### 2. Automation
 
-Setup an an automation to run the scenario automatically. This should setup a digital-twin-profile that creates the environment for the scenario, including loading any necessary data. Then, the scenario should be able to be "run". For example, if its an Amplifier skill, a command might be sent to the DTU to run amplifier with that prompt. The output should then be captured. This output might include capturing wall clock time, tokens, cost, etc. 
-- In cases where the goal is to compare *changes*, there could be parallel DTUs made that have the before and after installed.
-- By default, create an evaluations/ dir where each scenario will live. Use the examples as a reference structure. However, this could change depending on the user's use case.
-- From the DTUs be sure to extract the relevant files for analysis that will happen at an aggregate level outside each individual DTU or scenario run within the DTU.
+Wrap the chosen scenarios in a runnable harness so anyone can run them, re-run them, and get comparable results. By default, set up a Digital Twin Universe profile per variant and capture all relevant data such as  stdout and session files.
+
+```
+read_file file_path="@evaluation:context/workflow/harness-automation.md"
+```
 
 
 ### 3. Analyze the results
 
-After running through one or more scenarios. Look at the results. Do they make sense? Are they what you would expect?
-In a before and after case, how did the outputs change? If its not clear, consider running more samples.
+After running through one or more scenarios, look at the results. Do they make sense? Are they what you would expect?
+In a before and after case, how did the outputs change? If it's not clear, consider running more samples.
 
 
 ### 4. Analyze the Patterns
@@ -38,12 +42,14 @@ Once you get here, you will have the automations to run many scenarios, trying d
 
 ### 5. Larger Scale Metrics
 
-Once you have some "hero" scenarios and automations, move to the deep dives to determine how to come up with rubrics and getting metrics.
+Once you have some "hero" scenarios and automations, move to the deep dives to determine how to come up with rubrics and get metrics.
 
+
+---
 
 ## Worked examples
 
-Before walking through the steps below, find a worked examples — they are concrete end-to-end evaluations using this bundle and serve as templates for new ones.
+Before walking through the steps, find a worked example. These are concrete end-to-end evaluations using this bundle and serve as templates for new ones.
 
 ```
 read_file file_path="@evaluation:examples/EXAMPLE_INDEX.md"
@@ -51,6 +57,8 @@ read_file file_path="@evaluation:examples/EXAMPLE_INDEX.md"
 
 The index lists each example, what it measures, and the shape it uses. Open the directory of any example whose shape resembles what the user wants to do.
 
+
+---
 
 ## Philosophy
 
@@ -62,20 +70,22 @@ Use the principle that one scenario working end to end will get a user 40% of th
 
 ### Less is More
 
-Push back against users wanting to start by creating a high quantity of evaluation scenarios. It is better to focus on creating a few that are high signal than scale.
+Push back against users wanting to start by creating a high quantity of evaluation scenarios. It is better to focus on creating a few high-signal scenarios than many low-signal ones.
 
 ### Direct user attention to scenarios and criteria, not code
 
-Successful evaluations think deeply about what the problem the product being evaluated is meant to solve. They then create the measurements that can effectively measure success. The implementation is the often the easy part once these two are decided.
+Successful evaluations think deeply about what problem the product being evaluated is meant to solve. They then create the measurements that can effectively measure success. The implementation is often the easy part once these two are decided.
 
 ### Comparisons Can Provide Immediate Value
 
-Before jumping into creating rubrics, often users will want to validate the quality of their changes. In this case, you should propose "before and after" evaluations that will run their original version, and their new version each in DTUs and then compare the results.
+Before jumping into creating rubrics, often users will want to validate the quality of their changes. In this case, you should propose "before and after" evaluations that will run their original version and their new version, each in DTUs, and then compare the results.
 
 ### Automation is Key
 
-Always first figure out how to run their agent, software, whatever they are evaluating in script that can be automated and run by anyone.
+Always first figure out how to run their agent, software, or whatever they are evaluating in a script that can be automated and run by anyone.
 
+
+---
 
 ## Deep Dives
 
@@ -89,7 +99,7 @@ read_file file_path="@evaluation:context/deep_dives/<filename>"
 
 ### demystifying-evals-for-ai-agents.md
 
-Anthropic engineering's framework for designing automated evals for AI agents — defines tasks, environments, grading approaches (programmatic, LLM-as-judge, rubric, end-state), and trade-offs across single-turn, multi-turn, and full-agent evals.
+Anthropic engineering's framework for designing automated evals for AI agents. Defines tasks, environments, grading approaches (programmatic, LLM-as-judge, rubric, end-state), and trade-offs across single-turn, multi-turn, and full-agent evals.
 
 - **Read when:** the user is choosing a grading strategy, designing the structure of an eval (task vs trajectory vs end-state), or asking what a "good eval" generally looks like.
 
@@ -103,11 +113,10 @@ Three case studies (code documentation discrepancies, long PDF extraction, image
 
 Empirical study (Humanity's Last Exam, others) on whether mixing frontier models in a multi-agent setup outperforms a single-model team holding compute roughly constant.
 
-- **Read when:** Read when the user wants a sense of industry standard benchmarks like Humanity's Last Exam and they are trying to answer research questions with data.
+- **Read when:** the user wants a sense of industry standard benchmarks like Humanity's Last Exam and they are trying to answer research questions with data.
 
 ### local_llm_measurement_example.md
 
 Worked example of rigorously measuring local LLM latency and throughput (TTFT, ITL, output tok/s, total latency) across multiple models, quantizations, and node counts using vLLM + GuideLLM, plus light task-based probes of how each model actually behaves under different serving configurations.
 
 - **Read when:** the user is designing latency or perf benchmarks, picking metrics for an inference setup, comparing serving configurations (single-node vs distributed, full vs quantized), or wants a concrete template for sanity-checking how a model behaves before scoring quality.
-

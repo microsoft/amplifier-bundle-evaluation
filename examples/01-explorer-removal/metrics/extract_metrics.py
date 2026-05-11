@@ -99,7 +99,7 @@ def extract(run_dir: Path) -> dict:
     final_answer = ansi.sub("", final_answer)
 
     # ---- citations: find file:line patterns in the answer ---------------
-    # Match path-like tokens followed by ":<line>" — keep it conservative.
+    # Match path-like tokens followed by ":<line>". Keep it conservative.
     cite_re = re.compile(r"([\w./\-_]+\.[a-zA-Z0-9]+):(\d+(?:-\d+)?)")
     citations = sorted({m.group(0) for m in cite_re.finditer(final_answer)})
 
@@ -132,6 +132,6 @@ if __name__ == "__main__":
         sys.exit(2)
     run_dir = Path(sys.argv[1])
     result = extract(run_dir)
-    # Don't include the full answer in stdout — pipeline writes it separately
+    # Don't include the full answer in stdout, pipeline writes it separately
     out = {k: v for k, v in result.items() if k != "final_answer"}
     print(json.dumps(out, indent=2))

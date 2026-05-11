@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Example 01 — Foundation Explorer Agent Removal — orchestrator.
+# Example 01: Foundation Explorer Agent Removal (orchestrator).
 #
 # End-to-end runner: stands up Gitea + mirrors, launches both DTUs, runs the
 # eval prompt in each, captures stdout + events.jsonl + meta.json.
@@ -41,7 +41,7 @@ log "ensuring a Gitea instance is running"
 GITEA_LIST="$(amplifier-gitea list)"
 GITEA_ID="$(echo "$GITEA_LIST" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[0]["id"] if d else "")')"
 if [ -z "$GITEA_ID" ]; then
-    log "no Gitea instance — creating one"
+    log "no Gitea instance, creating one"
     GITEA_JSON="$(amplifier-gitea create --port 10110)"
     GITEA_ID="$(echo "$GITEA_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')"
 fi
@@ -80,7 +80,7 @@ mirror_if_needed amplifier-bundle-context-intelligence
 #
 # The AFTER variant of this eval needs a foundation install with the
 # foundation:explorer agent and ALL its delegation-guidance references
-# stripped — no substitute agent named in their place. We build that
+# stripped, no substitute agent named in their place. We build that
 # branch in a throwaway clone of the Gitea mirror, push it back to
 # Gitea, and discard the temp clone.
 #
@@ -164,7 +164,7 @@ launch_and_run() {
     [ -n "$sid" ] || die "[$side] could not find Session ID in stdout"
 
     # Resolve the foundation SHA the DTU actually installed by querying the
-    # Gitea mirror — never touch the user's workspace submodule.
+    # Gitea mirror. Never touch the user's workspace submodule.
     local fbranch
     fbranch="$( [ "$side" = before ] && echo main || echo remove-explorer )"
     foundation_sha="$(git ls-remote \
@@ -203,5 +203,5 @@ META
 launch_and_run before
 launch_and_run after
 
-log "done — results captured under $RESULTS/"
+log "done, results captured under $RESULTS/"
 log "to extract structured metrics: python3 $EXAMPLE_DIR/metrics/extract_metrics.py $RESULTS/<side>/run-1/"

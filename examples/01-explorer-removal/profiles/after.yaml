@@ -1,4 +1,4 @@
-# Eval example 01 — AFTER (foundation@remove-explorer, foundation:explorer agent removed)
+# Eval example 01: AFTER (foundation@remove-explorer, foundation:explorer agent removed)
 #
 # Launch with:
 #   amplifier-digital-twin launch profiles/after.yaml \
