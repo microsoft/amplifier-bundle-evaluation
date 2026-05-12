@@ -1,0 +1,14 @@
+bundle:
+  name: behavior-crusty-reminder
+  version: 0.1.0
+  description: Hook that reminds the agent to consult crusty-old-engineer after implementation work
+
+# Registers a single hook on `provider:request` that injects a system
+# reminder telling the agent to invoke the `crusty-old-engineer` skill
+# if it implemented anything during the current turn.
+#
+# Same source pattern as foundation's behaviors/progress-monitor.yaml.
+
+hooks:
+  - module: hooks-crusty-reminder
+    source: git+https://github.com/microsoft/amplifier-bundle-crusty-reminder@main#subdirectory=modules/hooks-crusty-reminder

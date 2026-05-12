@@ -1,0 +1,180 @@
+# Outer DTU profile for evaluating the evaluation bundle.
+#
+# Modeled on amplifier-bundle-digital-twin-universe's tested
+# dtu-host-in-incus.yaml profile. Differences:
+#
+#   - Adds amplifier-bundle-evaluation to the composition.
+#     This is the target of the evaluation.
+#   - Drops the Gitea url_rewrites at this layer.
+#     The outer DTU pulls all bundles from GitHub directly. Gitea is
+#     only relevant inside the outer DTU, where the agent under test
+#     creates one if it decides to mirror the inner artifact.
+#   - Drops the amplifier-chat profile fetch. Not relevant here.
+#
+# Inner artifact (amplifier-bundle-crusty-reminder source) is mounted
+# at /work/amplifier-bundle-crusty-reminder/ at provision time (Phase D).
+#
+# Usage from host:
+#   amplifier-digital-twin launch profiles/outer.yaml --name eval-outer
+
+name: eval-outer
+description: >
+  Outer DTU for evaluating the evaluation bundle. Hosts a full
+  Amplifier session with foundation + evaluation + DTU + Gitea
+  bundles composed, plus Incus and Docker so the agent under test
+  can spin up nested DTUs and Gitea containers.
+
+base:
+  image: ubuntu:24.04
+  config:
+    security.nesting: "true"
+
+passthrough:
+  allow_external: true
+  services:
+    - name: anthropic
+      key_env: ANTHROPIC_API_KEY
+
+provision:
+  setup_cmds:
+    # --- Common prereqs ----------------------------------------------
+    - |
+      set -euo pipefail
+      export DEBIAN_FRONTEND=noninteractive
+      timeout 180 apt-get update
+      timeout 300 apt-get install -y ca-certificates curl gnupg git
+
+    # --- Incus via Zabbly stable repo (noble = Ubuntu 24.04) ---------
+    - |
+      set -euo pipefail
+      install -m 0755 -d /etc/apt/keyrings
+      timeout 30 curl -fsSL --max-time 20 \
+        https://pkgs.zabbly.com/key.asc \
+        -o /etc/apt/keyrings/zabbly.asc
+      chmod a+r /etc/apt/keyrings/zabbly.asc
+      ARCH=$(dpkg --print-architecture)
+      cat > /etc/apt/sources.list.d/zabbly-incus-stable.sources <<EOF
+      Enabled: yes
+      Types: deb
+      URIs: https://pkgs.zabbly.com/incus/stable
+      Suites: noble
+      Components: main
+      Architectures: ${ARCH}
+      Signed-By: /etc/apt/keyrings/zabbly.asc
+      EOF
+
+    # --- Docker CE apt repo ------------------------------------------
+    - |
+      set -euo pipefail
+      timeout 30 curl -fsSL --max-time 20 \
+        https://download.docker.com/linux/ubuntu/gpg \
+        -o /etc/apt/keyrings/docker.asc
+      chmod a+r /etc/apt/keyrings/docker.asc
+      ARCH=$(dpkg --print-architecture)
+      CODENAME=$(. /etc/os-release && echo "${VERSION_CODENAME}")
+      echo "deb [arch=${ARCH} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${CODENAME} stable" \
+        > /etc/apt/sources.list.d/docker.list
+
+    # --- Install both stacks in a single apt transaction -------------
+    - |
+      set -euo pipefail
+      export DEBIAN_FRONTEND=noninteractive
+      timeout 180 apt-get update
+      timeout 600 apt-get install -y \
+        incus incus-base incus-client \
+        docker-ce docker-ce-cli containerd.io
+
+    # --- Ensure both daemons are up via systemd ----------------------
+    - |
+      set -euo pipefail
+      if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
+        timeout 30 systemctl enable --now incus.socket incus.service
+        timeout 30 systemctl enable --now docker.service
+      else
+        nohup incusd  >/var/log/incusd.log  2>&1 &
+        nohup dockerd >/var/log/dockerd.log 2>&1 &
+      fi
+      for i in $(seq 1 60); do
+        [ -S /var/lib/incus/unix.socket ] && [ -S /var/run/docker.sock ] && break
+        sleep 1
+      done
+      [ -S /var/lib/incus/unix.socket ] || { echo "ERROR: incus socket missing"; exit 1; }
+      [ -S /var/run/docker.sock ] || { echo "ERROR: docker socket missing"; exit 1; }
+      echo "Both sockets up after ${i}s"
+
+    # --- Inner Incus init + privileged default profile ---------------
+    - timeout 60 incus admin init --minimal
+    - timeout 15 incus profile set default security.privileged=true
+
+    # --- Install uv ---------------------------------------------------
+    - |
+      set -euo pipefail
+      timeout 60 curl -LsSf --max-time 45 https://astral.sh/uv/install.sh | sh
+
+    # --- Install Amplifier + DTU + Gitea CLIs ------------------------
+    - |
+      set -euo pipefail
+      export PATH="/root/.local/bin:$PATH"
+      timeout 120 uv tool install git+https://github.com/microsoft/amplifier
+      timeout 60  uv tool install git+https://github.com/microsoft/amplifier-bundle-digital-twin-universe
+      timeout 60  uv tool install git+https://github.com/microsoft/amplifier-bundle-gitea
+
+    # --- Amplifier provider config (anthropic passthrough) -----------
+    - |
+      set -euo pipefail
+      mkdir -p /root/.amplifier
+      cat > /root/.amplifier/settings.yaml <<EOF
+      config:
+        providers:
+          - module: provider-anthropic
+            source: git+https://github.com/microsoft/amplifier-module-provider-anthropic@main
+            config:
+              api_key: ${ANTHROPIC_API_KEY:-}
+      EOF
+
+    # --- Compose bundles into Amplifier (all from GitHub directly) ---
+    # foundation is the baseline; evaluation is what we are measuring;
+    # DTU + Gitea give the agent the building blocks to actually drive
+    # nested DTUs and mirror the inner artifact if it chooses.
+    #
+    # All four use --app so their behaviors compose into the session.
+    # This follows the dtu-host-in-incus pattern that uses multiple
+    # --app adds to compose a stack. Without --app, a bundle is
+    # registered but its includes/agents/modes do not compose into
+    # the active session (verified empirically: /evaluation mode does
+    # not appear when the evaluation bundle is added without --app).
+    - |
+      set -euo pipefail
+      export PATH="/root/.local/bin:$PATH"
+      timeout 60 amplifier bundle add git+https://github.com/microsoft/amplifier-foundation@main --app
+      timeout 60 amplifier bundle add git+https://github.com/microsoft/amplifier-bundle-evaluation@main --app
+      timeout 60 amplifier bundle add git+https://github.com/microsoft/amplifier-bundle-digital-twin-universe@main --app
+      timeout 60 amplifier bundle add git+https://github.com/microsoft/amplifier-bundle-gitea@main --app
+
+    # --- Working directory for the agent under test ------------------
+    - mkdir -p /work
+
+    # --- Smoke-verify install ----------------------------------------
+    - |
+      set -euo pipefail
+      export PATH="/root/.local/bin:$PATH"
+      echo "=== amplifier ==="
+      amplifier --version
+      echo "=== bundles ==="
+      amplifier bundle list
+      echo "=== amplifier-digital-twin ==="
+      amplifier-digital-twin --help >/dev/null && echo OK
+      echo "=== amplifier-gitea ==="
+      amplifier-gitea --help >/dev/null && echo OK
+
+readiness:
+  - name: incus-daemon
+    command: "incus info >/dev/null 2>&1"
+  - name: docker-daemon
+    command: "docker info >/dev/null 2>&1"
+  - name: amplifier-cli
+    command: "test -x /root/.local/bin/amplifier"
+  - name: amplifier-digital-twin-cli
+    command: "test -x /root/.local/bin/amplifier-digital-twin"
+  - name: amplifier-gitea-cli
+    command: "test -x /root/.local/bin/amplifier-gitea"

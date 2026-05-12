@@ -9,6 +9,11 @@ Example Uses:
 - "I built a memory system and want to know if it improves my agent"
 
 
+## Self-evaluation
+
+Evaluations of this bundle live under [`.amplifier/evaluations/`](.amplifier/evaluations/). Each one is a self-contained scenario with a single-script runner. The first is [`01-evaluate-amplifier-bundle`](.amplifier/evaluations/01-evaluate-amplifier-bundle/).
+
+
 ## Installation
 
 ### Prerequisites
