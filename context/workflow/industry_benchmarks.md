@@ -95,57 +95,37 @@ It is CRITICAL that the answers and evaluation logic are not leaked in your setu
 
 Humanity’s Last Exam is a multimodal, closed-ended academic benchmark with 2500 questions across many subjects, including math, humanities, and natural sciences. It contains multiple-choice and short-answer questions designed for automated grading.
 
-#### First thing to know
+#### Worked example in this bundle
 
-The dataset is on Hugging Face as `cais/hle`, but it is gated: you need to log in and accept the access conditions before downloading it. This data must not be **publicly shared, re-uploaded, or redistributed**.
+`@evaluation:examples/02-hle-foundation/` is a complete, runnable HLE-on-Amplifier example. Copy it as a starting point for any HLE evaluation. It uses the approach documented below.
 
-#### Install and load
+#### Access (required for any HLE work)
 
-```bash
-git clone https://github.com/centerforaisafety/hle.git
-cd hle
-pip install -r requirements.txt
-```
+`cais/hle` is gated on HuggingFace. Before downloading:
 
-```python
-from datasets import load_dataset
+1. Visit https://huggingface.co/datasets/cais/hle and accept the access terms (mandatory click-through).
+2. Create a read token at https://huggingface.co/settings/tokens with `Read access to contents of all public gated repos you can access` enabled.
+3. Export `HF_TOKEN=hf_...` or add it to `~/.amplifier/keys.env`.
 
-dataset = load_dataset("cais/hle", split="test")
-print(dataset[0].keys())
-```
+The HLE data must not be **publicly shared, re-uploaded, or redistributed**.
 
-The official README gives that same `load_dataset("cais/hle", split="test")` pattern. ([GitHub][7])
+#### Approach for evaluating Amplifier on HLE
 
-#### Run a tiny smoke test
+Use the pattern in `@evaluation:examples/02-hle-foundation/` as the recommended approach. The principles, in order:
 
-The repo provides a simple evaluation flow using the `openai-python` interface. Their example uses `run_model_predictions.py` followed by `run_judge_results.py`; they recommend not setting `max_completion_tokens` below **8192** for reasoning models, and their evaluation defaults temperature to `0`. ([GitHub][7])
+- **Sample on the host, not in the environment under test.** Ground truth must never enter the DTU. The host downloads the parquet via `huggingface_hub`, picks a row, writes `question.md` (and `question_image.<ext>` for image samples) into a working directory, and pushes only those files into the DTU.
+- **Pin the sample id.** A checked-in `PINNED_SAMPLE_ID` file makes the canonical question for an example deterministic across re-runs. The first run writes it; every subsequent run reads it.
+- **Solver runs inside a DTU.** Plain `amplifier run` with whatever bundle is under test. The DTU profile is the source of truth for what the agent has access to.
+- **Judge runs as a separate Amplifier session on the host.** The HLE judge prompt is LLM-as-judge and answer-type-agnostic. It handles exact strings, multiple choice, numerical with margin, and free-form text. Running it as its own `amplifier run` subprocess keeps it isolated from the solver's session and gives you a captured judge events.jsonl / transcript.jsonl alongside the solver's.
+- **Capture metrics from both sessions.** Wall time, tool calls, tokens, delegations, cost. Extract from `events.jsonl` and `transcript.jsonl` for each session. See `metrics/extract_metrics.py` in the worked example.
+- **Render a glanceable verdict.** A `verdict-{correct|incorrect}.md` at the run root makes the outcome visible to `ls`.
 
-```bash
-cd hle_eval
-
-MODEL="gpt-4o-2024-11-20"
-DATASET="cais/hle"
-
-python run_model_predictions.py \
-  --dataset ${DATASET} \
-  --model ${MODEL} \
-  --max_completion_tokens 8192 \
-  --num_workers 4 \
-  --max_samples 10
-
-python run_judge_results.py \
-  --dataset ${DATASET} \
-  --predictions hle_${MODEL}.json \
-  --num_workers 4
-```
-
-For a real run, increase `--num_workers` only after confirming your API rate limits and cost envelope.
-
-The flow above runs the reference setup against a stock model via `openai-python`. **For evaluating your own agent, bundle, or feature, customize the setup so the thing under evaluation is what answers each question, not a raw model call.** In practice this means replacing the model invocation inside `run_model_predictions.py` with a call into your agent (an Amplifier `run`, a CLI invocation, a service endpoint, etc.). Keep three things in mind when wiring it in:
+#### Practical guidance
 
 - Pass each question through faithfully. Do not add scaffolding, hints, or context the benchmark does not assume.
-- Match the output format `run_judge_results.py` expects so the judging step works unchanged.
-- Capture wall clock, tokens, and cost per question alongside the answer so they show up in the report.
+- Never log or surface the ground-truth answer in any artifact pushed into the DTU.
+- Start small. n=1 with a pinned sample id, end-to-end, before scaling.
+- Capture wall clock, tokens, and cost per question. They show up in the verdict file and the metrics extractor.
 
 
 ## Next
