@@ -75,6 +75,12 @@ Two heuristics that prevent most rubric problems:
 
 When in doubt, keep the rubric small. Five sharp criteria beats fifteen fuzzy ones.
 
+For the full design methodology (dimensions, weights, score-level definitions, judge strategy):
+
+```
+read_file file_path="@evaluation:context/methodology/rubric-design.md"
+```
+
 ### Operational metrics
 
 Independent of correctness, capture the operational cost of each run from the start.

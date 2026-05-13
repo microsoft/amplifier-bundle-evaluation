@@ -40,9 +40,9 @@ In a before and after case, how did the outputs change? If it's not clear, consi
 Once you get here, you will have the automations to run many scenarios, trying different approaches, and getting their outputs. Only then should you think about automating the "evaluation" part of it to get scores or some aggregate results.
 
 
-### 5. Larger Scale Metrics
+### 5. Rubrics and meaningful measurement
 
-Once you have some "hero" scenarios and automations, move to the deep dives to determine how to come up with rubrics and get metrics.
+Once a small number of "hero" scenarios are running through the harness and the outputs feel right by inspection, define rubrics to turn that judgment into scores and aggregate metrics.
 
 
 ---
