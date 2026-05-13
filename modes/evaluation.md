@@ -3,6 +3,7 @@ mode:
   name: evaluation
   description: Guidance for creating evaluations for the Amplifier ecosystem and beyond.
   shortcut: evaluation
+  advertised: false
   default_action: allow
 ---
 
