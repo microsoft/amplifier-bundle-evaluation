@@ -21,6 +21,7 @@ Evaluations of this bundle live under [`.amplifier/evaluations/`](.amplifier/eva
 - An existing Amplifier installation
 - A bundle that provides a runtime (e.g. `amplifier-foundation`) composed in the same session
 - `amplifier-bundle-modes` composed in the same session, since the evaluation mode is delivered through that capability
+- The industry benchmarking capability recommends using [Humanity's Last Exam](https://huggingface.co/datasets/cais/hle) for sample tasks. This dataset is gated and requires creating a [HuggingFace account](https://huggingface.co/join) and creating an access token with the permission "Read access to contents of all public gated repos you can access". Please protect the integrity of this benchmark by not publicly sharing, re-uploading, or distributing the dataset.
 
 ### Amplifier Bundle
 
