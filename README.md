@@ -4,9 +4,9 @@ A one-stop-shop for evaluating AI agents, bundles, and recipes across the Amplif
 
 Example Uses:
 
-- "I have changes to an Amplifier bundle I would like to evaluate the impact of. Can you help me measure it?"
-- "I have a custom agent that does Y"
-- "I built a memory system and want to know if it improves my agent"
+- "/evaluation I have changes to an Amplifier bundle I would like to evaluate the impact of. Can you help me measure it?"
+- "/evaluation I have a custom agent that does Y"
+- "/evaluation I built a memory system and want to know if it improves my agent"
 
 
 ## Self-evaluation
