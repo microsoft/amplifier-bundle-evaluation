@@ -17,9 +17,14 @@ Not all benchmarks make good candidates. Ensure that they meet these criteria be
 
 Note this section is high level. You should clone these benchmark repos locally and use the install/run steps below as a starting point. In every case, you will need to customize the setup so the agent, bundle, or feature being evaluated is the thing answering each task.
 
-### 1. SWE-bench Multimodal
+### 1. SWE-bench (Verified or Multimodal)
 
-SWE-bench Multimodal is a SWE-bench variant for software-engineering issues that include visual context: screenshots, UI bugs, mockups, diagrams, or visual error messages. It has hundreds of tasks available.
+SWE-bench evaluates the ability to fix real GitHub issues by producing a unified diff that makes the issue's tests pass. Two variants are recommended, and either is a reasonable starting point:
+
+- **SWE-bench Verified** (`princeton-nlp/SWE-bench_Verified`, `test` split, 500 Python instances): human-validated subset of the original SWE-bench. The broadest signal, language-stable, and the most common reporting target in the literature.
+- **SWE-bench Multimodal** (`princeton-nlp/SWE-bench_Multimodal`, `dev` split, 102 JavaScript instances): issues that include visual context such as screenshots, UI bugs, mockups, diagrams, or visual error messages. Typically harder because the agent must reason over images alongside code, so it requires a model with strong vision capabilities.
+
+Pick Verified for a broad signal on code-fixing. Pick Multimodal when you specifically want to measure visual reasoning together with code-fixing. `@evaluation:examples/04-foundation-vs-dev-demo/` runs against either via `AMPLIFIER_DEMO_SWE_DATASET=verified|multimodal`.
 
 #### Install
 
@@ -36,13 +41,17 @@ You also need Docker running; SWE-bench evaluates patches by applying them to re
 ```python
 from datasets import load_dataset
 
-dev = load_dataset("SWE-bench/SWE-bench_Multimodal", split="dev")
-print(dev[0].keys())
-print(dev[0]["problem_statement"])
-print(dev[0]["image_assets"])
+# Verified (500 Python instances, test split)
+ds = load_dataset("princeton-nlp/SWE-bench_Verified", split="test")
+
+# Multimodal (102 JS instances, dev split, includes image_assets)
+ds = load_dataset("princeton-nlp/SWE-bench_Multimodal", split="dev")
+
+print(ds[0].keys())
+print(ds[0]["problem_statement"])
 ```
 
-The multimodal records include normal SWE-bench fields like `repo`, `instance_id`, `base_commit`, `problem_statement`, `patch`, `test_patch`, `FAIL_TO_PASS`, and `PASS_TO_PASS`, plus an `image_assets` field containing image URLs associated with the problem statement, patch, or test patch. ([SWE-bench][2])
+Both variants share the core SWE-bench fields: `repo`, `instance_id`, `base_commit`, `problem_statement`, `patch`, `test_patch`, `FAIL_TO_PASS`, `PASS_TO_PASS`. Multimodal additionally provides an `image_assets` field with image URLs tied to the problem statement, patch, or test patch. ([SWE-bench][2])
 
 #### Your model's job
 
@@ -65,11 +74,20 @@ SWE-bench expects each prediction line to contain `instance_id`, `model_name_or_
 
 #### Evaluate
 
-For local dev-set evaluation, use the harness pattern:
+Use the harness pattern, passing the dataset and split for your chosen variant:
 
 ```bash
+# Verified
 python -m swebench.harness.run_evaluation \
-  --dataset_name SWE-bench/SWE-bench_Multimodal \
+  --dataset_name princeton-nlp/SWE-bench_Verified \
+  --split test \
+  --predictions_path predictions.jsonl \
+  --max_workers 4 \
+  --run_id verified_run
+
+# Multimodal
+python -m swebench.harness.run_evaluation \
+  --dataset_name princeton-nlp/SWE-bench_Multimodal \
   --split dev \
   --predictions_path predictions.jsonl \
   --max_workers 4 \

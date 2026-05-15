@@ -1,0 +1,73 @@
+# Eval example 04, variant "foundation":
+# amplifier CLI + amplifier-foundation bundle @ main.
+#
+# The same profile is used for every (foundation x benchmark x task) job;
+# the orchestrator stages task data inside the DTU at runtime.
+#
+# Launch:
+#   amplifier-digital-twin launch profiles/foundation.yaml --name demo04-foundation-<bench>-<idx>
+#
+# Pre-launch requirements:
+#   - ANTHROPIC_API_KEY set in host env
+
+name: eval04-foundation
+description: >
+  amplifier + amplifier-foundation @ main. Bench task data (HLE question
+  or SWE-bench problem statement) is pushed into /work/task/ at runtime.
+
+base:
+  image: ubuntu:24.04
+
+passthrough:
+  allow_external: true
+  services:
+    - name: anthropic
+      key_env: ANTHROPIC_API_KEY
+
+provision:
+  setup_cmds:
+    - apt-get update && apt-get install -y git curl ca-certificates
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    - |
+      export PATH="/root/.local/bin:$PATH"
+      uv tool install git+https://github.com/microsoft/amplifier
+
+    # Pin Opus 4.7 as default across the board (mirrors host ~/.amplifier/settings.yaml).
+    # routing.matrix=opus47 makes all model_role mappings route to claude-opus-4-7.
+    - |
+      mkdir -p /root/.amplifier
+      cat > /root/.amplifier/settings.yaml <<EOF
+      config:
+        providers:
+          - module: provider-anthropic
+            source: git+https://github.com/microsoft/amplifier-module-provider-anthropic@main
+            config:
+              api_key: ${ANTHROPIC_API_KEY}
+              default_model: claude-opus-4-7
+              enable_1m_context: 'true'
+              enable_prompt_caching: 'true'
+              priority: 1
+      routing:
+        matrix: opus47
+      EOF
+
+    # --app composes (register + activate) the bundle so its agents/modes/hooks load.
+    - |
+      export PATH="/root/.local/bin:$PATH"
+      amplifier bundle add git+https://github.com/microsoft/amplifier-foundation@main --app
+
+    - mkdir -p /work/task
+
+    - |
+      export PATH="/root/.local/bin:$PATH"
+      amplifier --version
+      amplifier bundle list
+
+readiness:
+  - name: amplifier-installed
+    command: 'PATH=/root/.local/bin:$PATH amplifier --version'
+  - name: workdir-exists
+    command: 'test -d /work/task && echo OK'
+  - name: git-available
+    command: 'git --version'
