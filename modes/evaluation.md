@@ -29,6 +29,8 @@ Wrap the chosen scenarios in a runnable harness so anyone can run them, re-run t
 read_file file_path="@evaluation:context/workflow/harness-automation.md"
 ```
 
+**Important:** captured run output (`results/`) can include provider keys, prompts, responses, and absolute paths. Never commit it. For scenarios in other repos, either replicate that pattern in the target repo's `.gitignore` before the first run, or write results outside the repo (e.g. `~/.cache/amplifier-eval/<scenario>/<date>/`).
+
 
 ### 3. Analyze the results
 

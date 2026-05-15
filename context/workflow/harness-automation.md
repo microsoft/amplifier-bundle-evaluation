@@ -35,6 +35,17 @@ evaluations/<NN-short-name>/
 
 Keep the `results/` shape identical across scenarios. That way the same metrics extraction script (or any downstream analysis) works against any run directory without modification.
 
+## Treat `results/` as potentially sensitive
+
+A `results/` directory captures `events.jsonl`, `transcript.jsonl`, `stdout.txt`, `meta.json`, and any analyzer output. These can contain provider keys (if a key ever leaks into a log line or event payload), full prompts and responses (which may include private repo content or user-specific data), absolute host paths, and the agent's complete reasoning trace. Never commit them.
+
+This bundle's `.gitignore` already covers `examples/*/results/` and `.amplifier/evaluations/*/results/` so any scenario added under those paths is safe by default. When adding a scenario in a different repo, do ONE of the following before the first run:
+
+- Add a matching pattern to that repo's `.gitignore` (e.g. `results/` or `evaluations/*/results/`), OR
+- Point the runner at a path outside the repo entirely, such as `~/.cache/amplifier-eval/<scenario>/<date>/`, and pass that path into the scenario's metrics scripts as an argument.
+
+Sanity check before any commit: `git status` should never list files under a `results/` path. If it does, stop and update `.gitignore` before staging anything.
+
 ## The DTU profile
 
 The profile is the source of truth for the environment. At a minimum it includes:
