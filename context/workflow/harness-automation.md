@@ -17,7 +17,6 @@ evaluations/<NN-short-name>/
   metrics/
     extract_metrics.py   # Pulls structured metrics from a captured run
     summarize_run.py     # Renders a per-run markdown summary at the run root
-    render_html.py       # Renders a per-run self-contained HTML report at the run root
   results/
     <YYYY-MM-DD>/
       report.md            # (Optional) summary
@@ -28,7 +27,6 @@ evaluations/<NN-short-name>/
         sessions/sessions/<session_id>/transcript.jsonl
         analysis/            # (Optional) Post-run analyzer's narrative + classification
         verdict-{outcome}.md # Rendered markdown summary — start here
-        verdict.html         # Self-contained visual report — share/email this
       after/run-1/
         (same shape)
 ```
@@ -79,14 +77,26 @@ Make the runner idempotent. Re-running on the same day either replaces or extend
 
 ## What to capture per run
 
-At minimum:
+A run is the unit of replayable evidence. Capture enough that six months from now you (or any downstream consumer) can reconstruct what happened without re-running.
 
-- `meta.json` for wall time, exit code, prompt, profile path, DTU id, SHAs of every repo installed, and pointers to session files
-- `stdout.txt` for the full agent output as the user would see it
-- `sessions/sessions/<session_id>/events.jsonl` for structured event data
-- `sessions/sessions/<session_id>/transcript.jsonl` for the LLM conversation and the final answer
+The guidance here is deliberately generic — most of what you capture is the same whether you are evaluating an Amplifier session, a script, a third party agent, or a CLI tool.
 
-Pin every SHA you can in `meta.json`. The DTU mirrors moving targets (Gitea branch heads, GitHub clones); without pinned SHAs you cannot reproduce a result later.
+### Minimum artifacts
+
+- `meta.json` — the structured record of the run (fields below)
+- `stdout.txt` — the full output as the user would see it
+- Full execution record. *Amplifier:* `sessions/sessions/<session_id>/events.jsonl` + `transcript.jsonl`. *Generic:* whatever your system emits — logs, traces, transcripts, structured events.
+
+### Fields in `meta.json`
+
+- **`scenario_description`** — the plain-English description of what this run tests. *Generic:* "the goal of this run, in one sentence." *Amplifier:* often the eval mode name plus a short version of the prompt.
+- **`prompt`** — the verbatim input handed to the system under test, byte-for-byte. *Amplifier:* the text passed to `amplifier run --prompt ...`. *Generic:* whatever your system received — prompt, query, payload, request body.
+- **`judge_rubric`** — if a separate evaluator scored the run, inline its criteria (not just a path). *Amplifier:* judge LLM system prompt + `rubric.md` content. *Generic:* the rule set, the test code, or the scoring criteria — inlined or copied into the run directory. If the rubric evolves later, today's verdicts become uninterpretable without this.
+- **`failure: {stage, message, traceback, exit_code}`** — populated whenever anything errors. Never let errors survive only as buried text in stdout. *Amplifier:* solver exit code, hook failures, mode-gate denials, judge errors. *Generic:* whatever structured error your system can surface — process exit, exception, HTTP status, validation failure.
+- **`cost_usd` + `tokens`** — structured cost data, not stdout-grep. *Amplifier:* derive from `llm:response` events; store `cost_usd`, `model`, and input/output/cache token counts. *Generic:* whatever your provider returns — currency, billable units, model id. If there is no cost, omit the field rather than zero-fill.
+- **Profile / config snapshot** — the configuration that produced the run, not a path to it. *Amplifier:* copy `profiles/<variant>.yaml` into the run directory as `profile.snapshot.yaml`, or store its sha256 in `meta.json`. *Generic:* the config file content, or a sha256 plus a copy. Paths alone are useless if the file changes after the run.
+- **Dependency inventory** — every version of every component active during the run. *Amplifier:* `amplifier bundle list` output saved to `bundles.txt`, plus core/foundation SHAs. *Generic:* `pip freeze` / `npm ls --depth=0` / `go mod graph` / equivalent, saved into the run directory.
+- **Existing fields**: wall time, exit code, DTU/instance id, profile path, SHAs of every repo installed, pointers to session/execution files.
 
 ## Metrics extraction
 
@@ -106,41 +116,6 @@ The example's `extract_metrics.py` pulls:
 - File-line citations via regex over the final answer
 
 For a new scenario, edit the script to add scenario-specific extractions (did the agent invoke a particular tool, did the output match an expected pattern, etc.). The token, event, and delegation extraction is general and worth reusing as is.
-
-## Visual report
-
-Every captured run should also produce a self-contained HTML report at the run root (`verdict.html`). The runner generates it as the last step. The HTML is for humans — shareable, emailable, no setup required to view.
-
-The five things every report should do:
-
-1. **Lead with a verdict banner.** Color-coded green/red, with one plain-English sentence explaining what the outcome means. Don't assume the reader knows the benchmark's jargon.
-2. **Show the headline numbers as cards.** 5–8 key numbers (pass rates, wall time, tool calls, etc.), each color-coded by whether it's good or bad.
-3. **Use plain-English section headings.** "How the agent worked", "What the agent changed" — not "Solver session (raw)". Keep the technical name in parentheses if the reader needs it.
-4. **Inline the narrative.** If there's a post-run analyzer, inline its rendered markdown as the primary content of the page.
-5. **Hide the long stuff.** Wrap problem statements, raw stdout, gold patches, and full metadata in expandable `<details>` blocks so the page is scannable.
-6. Generally be concise and focus on the important parts.
-
-See `@evaluation:examples/03-swebench-multimodal-foundation/metrics/render_html.py` as a working reference.
-
-<details>
-<summary>Implementation notes</summary>
-
-- **Self-contained.** Inline all CSS. One CDN dependency is acceptable (e.g. `marked` for rendering inlined markdown); more than one defeats the "share this single file" point.
-- **Wiring.** One line in `run.sh` after `summarize_run.py`:
-
-  ```bash
-  python3 "$EXAMPLE_DIR/metrics/render_html.py" "$RESULTS"
-  ```
-
-- **User pointer.** Add the path to the final log block so the user knows to open it:
-
-  ```bash
-  log "  visual report:      $RESULTS/verdict.html (open in a browser)"
-  ```
-
-- **Side-by-side artifacts.** For code-patch scenarios, show the agent's diff next to the gold diff. For other scenarios, show output vs. expected. Make differences obvious.
-
-</details>
 
 ## Sample count
 
