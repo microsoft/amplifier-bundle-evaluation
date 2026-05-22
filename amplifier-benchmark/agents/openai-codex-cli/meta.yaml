@@ -1,0 +1,4 @@
+name: openai-codex-cli
+description: >
+  OpenAI Codex CLI (@openai/codex) - npm-installed AI coding agent run
+  as a one-shot CLI per turn via `codex exec`.

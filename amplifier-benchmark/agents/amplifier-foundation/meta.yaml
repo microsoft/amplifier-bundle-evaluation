@@ -1,0 +1,5 @@
+name: amplifier-foundation
+description: >
+  Amplifier CLI from microsoft/amplifier@main with the amplifier-foundation
+  bundle composed onto every session, configured to use Anthropic as the
+  default provider.

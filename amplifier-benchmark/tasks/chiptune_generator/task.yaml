@@ -1,0 +1,25 @@
+instructions: |
+  I want a command-line tool that generates chip tune music from plain English descriptions. Chip tunes are that retro 8-bit sound from classic game consoles - square waves, triangle waves, arpeggios, etc.
+  I want to describe what I'm looking for and get a MIDI file out.
+
+  The basic workflow would be something like:
+
+  - `chiptune generate "an upbeat battle theme with fast arpeggios" --output battle.mid`
+
+  - Listen to it, decide I want changes
+
+  - `chiptune refine battle.mid "make the bass line more prominent and add faster arpeggios" --output battle_v2.mid`
+
+  - Repeat until I'm happy
+
+  The generate command should use an LLM to interpret my description and figure out the right tempo, key, instruments, etc. A description like "melancholy and slow" should sound very different from "fast energetic boss battle."
+  The output should be a valid MIDI file with multiple channels - lead melody, harmony, bass, percussion - using instruments that actually sound like chip tunes, not piano or strings.
+
+  The refine command is important to me. It needs to actually read and understand the existing MIDI file, then apply my feedback to it.
+
+  I'd also like an analyze command (`chiptune analyze battle.mid`) that prints a human-readable breakdown of a MIDI file - tempo, duration, what channels are being used, note counts, pitch ranges, that kind of thing. Useful for understanding what the tool produced.
+
+  The generated tunes should be somewhere between 30 seconds and 2 minutes long.
+
+  Please include a README with examples of all three commands.
+  You have an OPENAI_API_KEY and ANTHROPIC_API_KEY available for any LLM API calls you need to make.

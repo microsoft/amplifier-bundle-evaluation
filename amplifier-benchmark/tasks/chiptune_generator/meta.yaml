@@ -1,0 +1,6 @@
+name: chiptune_generator
+difficulty: hard
+categories:
+  - cli_tool
+  - ai_tool
+timeout: 4500

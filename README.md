@@ -1,6 +1,6 @@
 # Amplifier Bundle Evaluation
 
-A one-stop-shop for evaluating AI agents, bundles, and recipes across the Amplifier ecosystem. Provides an `evaluation` mode and supporting context for running structured evaluations for a broad range of evaluation use cases.
+A one-stop-shop for evaluating AI agents, bundles, and recipes across the Amplifier ecosystem. Provides an `evaluation` mode and supporting context for designing evaluations, along with a Python harness (`amplifier_evaluation`) for running pre-defined tasks against agents in a Digital Twin Universe.
 
 Example Uses:
 
@@ -38,6 +38,18 @@ If you also need the modes capability (required for the `evaluation` mode to be 
 ```bash
 amplifier bundle add "git+https://github.com/microsoft/amplifier-bundle-modes@main#subdirectory=behaviors/modes.yaml" --app
 ```
+
+### Harness (Python package)
+
+The bundle also ships a Python package, `amplifier_evaluation`, for running pre-defined tasks against an agent in a Digital Twin Universe. It is consumed as a library and is independent of the `evaluation` mode. The package depends on `amplifier-core` and `amplifier-foundation`; for local development those resolve to the sibling submodules via `[tool.uv.sources]`.
+
+```bash
+git clone https://github.com/microsoft/amplifier-bundle-evaluation
+cd amplifier-bundle-evaluation
+uv sync
+```
+
+The first sync builds `amplifier-core` from source (Rust extension), which takes a minute or two. After that, the AI User is importable as `from amplifier_evaluation.ai_user import AIUser`. See [`context/harness/overview.md`](context/harness/overview.md) for layout, task/agent schemas, and usage.
 
 ## Contributing
 

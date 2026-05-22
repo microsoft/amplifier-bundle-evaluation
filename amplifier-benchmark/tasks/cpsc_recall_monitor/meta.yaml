@@ -1,0 +1,6 @@
+name: cpsc_recall_monitor
+difficulty: easy
+categories:
+  - cli_tool
+  - web
+timeout: 1800

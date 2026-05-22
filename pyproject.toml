@@ -1,0 +1,41 @@
+[project]
+name = "amplifier-bundle-evaluation"
+version = "0.2.0"
+description = "One-stop-shop for evaluations across the Amplifier ecosystem: tasks, agents, AI User, grader, extractor, orchestrator."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Microsoft MADE:Explorations Team" }]
+keywords = ["amplifier", "evaluation", "agents", "benchmarks", "digital-twin"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "amplifier-core",
+    "amplifier-foundation",
+    "pyyaml>=6.0,<7.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff",
+    "pyright",
+]
+
+[tool.uv.sources]
+amplifier-core = { path = "../amplifier-core", editable = true }
+amplifier-foundation = { path = "../amplifier-foundation", editable = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/amplifier_evaluation"]

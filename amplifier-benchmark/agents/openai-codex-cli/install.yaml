@@ -1,0 +1,14 @@
+# Installation is handled by the Digital Twin Universe profile, not by a
+# per-agent setup script. The harness launches the profile below before
+# the AI User runs.
+
+requires:
+  env:
+    - OPENAI_API_KEY
+
+dtu_profile: amplifier-bundle-digital-twin-universe/profiles/community/openai-codex-cli.yaml
+
+notes: |
+  This agent is installed via the community DTU profile.
+  Launch with:
+      amplifier-digital-twin launch <repo>/amplifier-bundle-digital-twin-universe/profiles/community/openai-codex-cli.yaml
