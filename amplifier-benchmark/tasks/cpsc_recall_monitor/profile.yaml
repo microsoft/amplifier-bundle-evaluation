@@ -1,0 +1,33 @@
+# DTU profile for the cpsc_recall_monitor evaluation task.
+#
+# Provides a clean Ubuntu 24.04 environment with uv installed and outbound
+# internet access so the agent under evaluation can fetch live CPSC recall
+# data. Forwards Anthropic and OpenAI API keys for agents that need them.
+#
+# Launch:
+#   amplifier-digital-twin launch <path-to-this-file>
+name: eval-task-cpsc-recall-monitor
+description: >
+  Evaluation task environment for cpsc_recall_monitor. Ubuntu 24.04 with uv,
+  outbound internet, and Anthropic/OpenAI key passthrough.
+
+base:
+  image: ubuntu:24.04
+
+passthrough:
+  allow_external: true
+  services:
+    - name: anthropic
+      key_env: ANTHROPIC_API_KEY
+    - name: openai
+      key_env: OPENAI_API_KEY
+
+provision:
+  setup_cmds:
+    - apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates && rm -rf /var/lib/apt/lists/*
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - mkdir -p /workspace
+
+readiness:
+  - name: uv-installed
+    command: uv --version

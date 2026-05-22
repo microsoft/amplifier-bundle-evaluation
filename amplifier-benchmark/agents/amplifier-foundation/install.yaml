@@ -1,0 +1,34 @@
+# Commands the orchestrator runs sequentially inside the running task DTU
+# to install this agent. Each command is executed via `bash -lc`.
+#
+# Assumes the task profile has already:
+#   - installed uv on PATH
+#   - forwarded ANTHROPIC_API_KEY via passthrough.services
+#
+# The Anthropic key is expanded at install time and BAKED LITERALLY into
+# /root/.amplifier/settings.yaml -- so ANTHROPIC_API_KEY must be present
+# in the DTU's environment when these commands run.
+requires:
+  env:
+    - ANTHROPIC_API_KEY
+
+setup_cmds:
+  - uv tool install -vv git+https://github.com/microsoft/amplifier
+  - amplifier bundle add git+https://github.com/microsoft/amplifier-foundation@main --app
+  - |
+    mkdir -p /root/.amplifier
+    cat > /root/.amplifier/settings.yaml << EOF
+    config:
+      providers:
+        - module: provider-anthropic
+          source: git+https://github.com/microsoft/amplifier-module-provider-anthropic@main
+          config:
+            api_key: $ANTHROPIC_API_KEY
+            default_model: claude-opus-4-7
+    routing:
+      overrides:
+        general:
+          - provider: anthropic
+            model: claude-opus-*
+    EOF
+  - amplifier --version
