@@ -47,12 +47,24 @@ wrapper:
 
     amplifier-digital-twin exec <dtu_id> -- <command>
 
+The agent should always run from its designated working directory so its
+deliverables and session data land in a predictable place. You will be told
+the working directory in the opening prompt. ALWAYS wrap each agent CLI
+invocation in this pattern:
+
+    amplifier-digital-twin exec <dtu_id> -- bash -c 'cd <workspace_dir> && <agent command>'
+
+For example, if the invocation guide says to run `amplifier run "hello"` and
+the workspace_dir is `/workspace`, you execute:
+
+    amplifier-digital-twin exec dtu-abc12345 -- bash -c 'cd /workspace && amplifier run "hello"'
+
 For commands with tricky quoting or multi-line input, write your message to
 a host file first and push it in:
 
     echo "<message>" > /tmp/msg.txt
     amplifier-digital-twin file-push <dtu_id> /tmp/msg.txt /tmp/msg.txt
-    amplifier-digital-twin exec <dtu_id> -- bash -c 'cmd --input "$(cat /tmp/msg.txt)"'
+    amplifier-digital-twin exec <dtu_id> -- bash -c 'cd <workspace_dir> && cmd --input "$(cat /tmp/msg.txt)"'
 
 You will also receive:
 
@@ -60,8 +72,9 @@ You will also receive:
 - A scenario describing what you want to do.
 - An invocation guide describing the agent's CLI: which commands to run,
   what responses look like, what "broken" looks like. The guide assumes
-  you are already inside the Digital Twin Universe shell. You wrap each
-  command with `amplifier-digital-twin exec ...` to actually run it.
+  you are already inside the agent's working directory; you wrap each
+  command with the `exec ... bash -c 'cd <workspace_dir> && ...'` pattern
+  to actually run it.
 
 Stay in character as the persona. Use bash to talk to the agent according to
 the guide. When the scenario is done or the agent is broken, call `conclude`.
@@ -93,6 +106,7 @@ def _render_opening_prompt(
     scenario: str,
     dtu_id: str,
     invocation_guide: str,
+    workspace_dir: str,
 ) -> str:
     return (
         "You are now playing this persona:\n"
@@ -104,9 +118,12 @@ def _render_opening_prompt(
         f"{scenario.strip()}\n"
         '"""\n\n'
         f"The agent you are testing is running inside Digital Twin Universe "
-        f"`{dtu_id}`.\n\n"
-        "How to talk to it (its CLI behavior, assuming you are inside the\n"
-        "Digital Twin Universe shell):\n"
+        f"`{dtu_id}`.\n"
+        f"The agent's working directory is `{workspace_dir}`. Every agent "
+        f"invocation must be wrapped with `cd {workspace_dir} && ...` per the "
+        f"system instruction's exec pattern.\n\n"
+        "How to talk to it (its CLI behavior, assuming you are already inside\n"
+        f"the agent's working directory `{workspace_dir}`):\n"
         '"""\n'
         f"{invocation_guide.strip()}\n"
         '"""\n\n'
@@ -175,6 +192,7 @@ class AIUser:
         dtu_id: str,
         invocation_guide: str,
         persona: str | None = None,
+        workspace_dir: str = "/workspace",
     ) -> InteractionResult:
         """Drive the agent in the Digital Twin Universe through the scenario.
 
@@ -186,6 +204,11 @@ class AIUser:
                 (read from a file, fetched from a database, inlined).
             persona: The character to roleplay, as a plain string. If None,
                 DEFAULT_PERSONA is used.
+            workspace_dir: Absolute path inside the DTU where the agent
+                should run. Every agent CLI invocation gets wrapped with
+                `cd <workspace_dir> && ...` so deliverables and session
+                data land predictably. Defaults to `/workspace`, which is
+                the convention task profiles in this benchmark use.
         """
         if self._prepared is None:
             raise RuntimeError("AIUser.setup() must be called before run().")
@@ -203,7 +226,9 @@ class AIUser:
         )
         await session.coordinator.mount("tools", conclude_tool, name=conclude_tool.name)
 
-        opening = _render_opening_prompt(persona, scenario, dtu_id, invocation_guide)
+        opening = _render_opening_prompt(
+            persona, scenario, dtu_id, invocation_guide, workspace_dir
+        )
 
         async with session:
             final_text = await session.execute(opening)

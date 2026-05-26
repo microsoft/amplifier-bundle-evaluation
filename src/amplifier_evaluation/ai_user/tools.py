@@ -71,8 +71,7 @@ class ConcludeTool:
                 "summary": {
                     "type": "string",
                     "description": (
-                        "One-paragraph summary of what happened during the "
-                        "interaction."
+                        "One-paragraph summary of what happened during the interaction."
                     ),
                 },
             },
