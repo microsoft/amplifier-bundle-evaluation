@@ -6,6 +6,7 @@ The intent is one package, four pieces that can be used together or in isolation
 
 - `ai_user` (implemented): drives an agent in a DTU like a real user would.
 - `grader` (implemented): scores agent output against a rubric defined in `amplifier-benchmark/tasks/<task>/grader.yaml`.
+- `extractor` (implemented): pulls the agent's work (deliverables + session logs) out of a DTU onto the host so it can be analyzed later. Uses `amplifier-benchmark/agents/<agent>/data.yaml` as a hint.
 
 ## Layout
 
@@ -15,7 +16,7 @@ amplifier-bundle-evaluation/
 ├── src/amplifier_evaluation/
 │   ├── ai_user/        # AIUser, ConcludeTool, personas, system instruction
 │   ├── grader/         # Grader, SubmitRubricTool, schema parser, rubric validation
-│   ├── extractor/      # placeholder
+│   ├── extractor/      # Extractor, SubmitExtractionManifestTool, manifest validation
 │   └── orchestrator/   # placeholder
 └── amplifier-benchmark/      # benchmark dataset
     ├── agents/         # per-agent definitions: install.yaml, invocation.md, data.yaml, meta.yaml
@@ -74,6 +75,8 @@ asyncio.run(main())
 
 `AIUser(foundation_source=..., provider_source=...)` accepts any string `load_bundle` understands (git URL, local path, etc.), so the AI User can also be pointed at a local Foundation checkout for development.
 
+`AIUser.run()` also accepts a `workspace_dir` parameter (default `/workspace`). Every agent CLI invocation is wrapped with `bash -c 'cd <workspace_dir> && ...'` so the agent's deliverables and session data land in a predictable cwd. This contract lives at the AI User layer so per-agent `invocation.md` files stay workspace-agnostic. Task profiles in this benchmark create `/workspace` at provision time; override `workspace_dir` only for tasks that need a different working directory.
+
 ## Grader
 
 `Grader` is a Foundation session that audits an agent's work inside a DTU against a `grader.yaml` rubric. Like the AI User it uses `bash` + `amplifier-digital-twin exec` to explore the DTU (no Python transport layer). For each `evaluation` in the grader.yaml it runs a single multi-turn session with three phases:
@@ -110,6 +113,46 @@ asyncio.run(main())
 ```
 
 `Grader(foundation_source=..., provider_source=...)` accepts the same sources as `AIUser`.
+
+## Extractor
+
+`Extractor` is a Foundation session that pulls the agent's work out of a DTU onto the host so it can be analyzed later. Like the AI User and Grader it uses `bash` + `amplifier-digital-twin` (no Python transport layer), but with two host-side commands: `amplifier-digital-twin exec` to inspect inside the DTU, and `amplifier-digital-twin file-pull` to copy files onto the host.
+
+The Extractor is framed by goal, not by paths. It runs a single multi-turn session with three phases:
+
+1. Given the original task context and the agent's `data.yaml` (as a hint), explore the DTU and pull (a) the agent's DELIVERABLES wherever they actually live and (b) the agent's SESSION LOGS. Final assistant message is a free-text extraction report.
+2. Submit a structured manifest via the `submit_extraction_manifest` tool. Each entry has a `category` of `workspace` (deliverables), `session_data` (transcripts/events/metadata), or `other` (auxiliary state worth keeping, with a `note`).
+3. If validation fails (host destinations missing on disk or outside `output_dir`), ask for fixes (max 2 retries).
+
+The `data.yaml` is treated as a hint, not a strict spec. If the paths in `data.yaml` do not exist (slug drift, agent wrote elsewhere), the Extractor walks the directory tree to find what is actually there. Artifacts (`extraction_report.md`, `manifest.json`, `extraction_result.json`) land at the root of `output_dir`; pulled files land under sensible subdirectories (`sessions/<id>/`, `workspace/`, `other/<name>/`).
+
+Minimal usage:
+
+```python
+import asyncio
+from pathlib import Path
+from amplifier_evaluation.extractor import Extractor
+
+async def main():
+    e = Extractor()  # defaults to loading foundation + anthropic-sonnet provider from canonical git URLs
+    await e.setup()
+
+    task_context = Path("amplifier-benchmark/tasks/cpsc_recall_monitor/task.yaml").read_text()
+    result = await e.run(
+        dtu_id="dtu-xxxxxxxx",  # DTU must already be running with the agent's work in it
+        task_context=task_context,
+        data_yaml_path="amplifier-benchmark/agents/amplifier-foundation/data.yaml",
+        output_dir="./extractor_output",
+    )
+    print(f"session_dirs:   {result.session_dirs}")
+    print(f"workspace_dir:  {result.workspace_dir}")
+    for entry in result.manifest.extracted:
+        print(f"  [{entry.category}] {entry.destination}")
+
+asyncio.run(main())
+```
+
+`ExtractionResult` exposes `session_dirs`, `workspace_dir`, and `workspace_paths` helper properties so the orchestrator can find artifacts without inspecting categories itself. `Extractor(foundation_source=..., provider_source=...)` accepts the same sources as `AIUser`.
 
 ## Dependencies
 
