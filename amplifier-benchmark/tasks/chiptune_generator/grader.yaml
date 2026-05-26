@@ -1,4 +1,4 @@
-stages:
+evaluations:
   - name: architecture
     weight: 0.35
     steps: |
