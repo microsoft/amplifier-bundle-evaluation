@@ -57,14 +57,6 @@ class AgentSpec:
     # data.yaml is optional (openai-codex-cli currently ships without one).
     data_yaml_path: Path | None
 
-    @property
-    def install_mode(self) -> str:
-        """Either 'setup_cmds' (run inside an existing DTU) or 'dtu_profile'
-        (a specialized profile that already has the agent baked in)."""
-        if self.install.get("dtu_profile"):
-            return "dtu_profile"
-        return "setup_cmds"
-
 
 @dataclass
 class TaskSpec:

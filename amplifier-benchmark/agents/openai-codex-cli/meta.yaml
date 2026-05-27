@@ -1,4 +1,5 @@
 name: openai-codex-cli
 description: >
   OpenAI Codex CLI (@openai/codex) - npm-installed AI coding agent run
-  as a one-shot CLI per turn via `codex exec`.
+  as a one-shot CLI per turn via `codex exec`. Installed into the task DTU
+  by the harness via install.yaml's setup_cmds.

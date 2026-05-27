@@ -14,7 +14,7 @@ launching -> installing -> seeding -> running_agent -> extracting -> grading -> 
 
 Key types:
 
-- `AgentSpec` — one agent loaded from `agents/<id>/`. Exposes `install_mode` (`setup_cmds` or `dtu_profile`).
+- `AgentSpec` — one agent loaded from `agents/<id>/`. Carries `install` (parsed `install.yaml`), `meta`, and `invocation_md`.
 - `TaskSpec` — one task loaded from `tasks/<id>/`. Exposes `timeout_s`.
 - `TrialSpec` — `(agent, task, trial_number)`. The atomic unit of work.
 - `TrialState` — Enum: `pending`, `launching`, `installing`, `seeding`, `running_agent`, `extracting`, `grading`, `cleaning_up`, `completed`, `failed`, `cancelled`. The `is_terminal` property flags the last three.
@@ -57,19 +57,20 @@ All operations are async so many trials can run concurrently without blocking ea
 
 `install.py` installs an agent into a running DTU.
 
-Two patterns are supported:
-
-- `setup_cmds`: list of `bash -lc` commands run inside an already-launched DTU. Used by agents that compose onto a task's profile (e.g. `amplifier-foundation`).
-- `dtu_profile`: a Digital Twin Universe profile that already has the agent baked in. Nothing to install post-launch; the harness uses this profile to launch instead of the task's profile.
+Agents declare `setup_cmds`: a list of `bash -lc` commands run inside the task's DTU after launch. There is no parallel "agent profile" path; agents always compose onto the task's profile.
 
 ```python
 from amplifier_evaluation.harness.install import (
-    install_agent, select_profile_path, verify_env,
+    install_agent, compose_launch_profile, verify_env,
 )
 
 missing = verify_env(agent)  # checks install.yaml requires.env[]
-profile_path = select_profile_path(agent, task.profile_path)
-# tries the cwd, then the agent's own directory. No ancestor walk.
+profile_path = compose_launch_profile(
+    agent, task.profile_path, trial_dir / "launch_profile.yaml"
+)
+# Adds passthrough.services entries for agent.install.requires.env so the
+# agent's required env vars reach the DTU without the task profile having
+# to enumerate every possible API key. Task entries always win on conflict.
 await install_agent(agent, dtu, log_to=Path("install.log"))
 ```
 

@@ -1,14 +1,54 @@
-# Installation is handled by the Digital Twin Universe profile, not by a
-# per-agent setup script. The harness launches the profile below before
-# the AI User runs.
-
+# Commands the orchestrator runs sequentially inside the running task DTU
+# to install the OpenAI Codex CLI. Each command is executed via `bash -lc`.
+#
+# Assumes the task profile has:
+#   - apt-get available (Ubuntu 24.04 base)
+#   - OPENAI_API_KEY forwarded into the container (either via the task
+#     profile's passthrough.services or via the harness merging the agent's
+#     requires.env into a synthesized passthrough entry at launch time).
+#
+# Mirrors the community DTU profile
+# `amplifier-bundle-digital-twin-universe/profiles/community/openai-codex-cli.yaml`
+# so codex actually authenticates against the Responses endpoint instead of
+# 401-ing despite OPENAI_API_KEY being present.
 requires:
   env:
     - OPENAI_API_KEY
 
-dtu_profile: amplifier-bundle-digital-twin-universe/profiles/community/openai-codex-cli.yaml
+setup_cmds:
+  # System deps codex expects (jq, ripgrep, etc.). curl/ca-certificates may
+  # already be present from the task profile -- apt-get install is idempotent.
+  - |
+    apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates curl git jq ripgrep procps less unzip gnupg2 \
+      && rm -rf /var/lib/apt/lists/*
 
-notes: |
-  This agent is installed via the community DTU profile.
-  Launch with:
-      amplifier-digital-twin launch <repo>/amplifier-bundle-digital-twin-universe/profiles/community/openai-codex-cli.yaml
+  # Node.js 22 LTS via NodeSource. codex needs Node >= 18.
+  - |
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+    apt-get install -y nodejs
+    rm -rf /var/lib/apt/lists/*
+
+  - npm install -g @openai/codex
+
+  # Configure codex for an isolated container: disable the bubblewrap
+  # sandbox (we're already in an isolated DTU) and the approval gate.
+  # sandbox_mode="danger-full-access" maps to SandboxType::None;
+  # approval_policy="never" keeps `codex exec` non-interactive.
+  - |
+    mkdir -p /root/.codex
+    cat > /root/.codex/config.toml << 'EOF'
+    sandbox_mode = "danger-full-access"
+    approval_policy = "never"
+    EOF
+
+  # Persist the API key into codex's own credential store. Without this
+  # step codex picks up OPENAI_API_KEY but fails to authenticate against
+  # the Responses websocket endpoint (401 errors). `codex login
+  # --with-api-key` reads the key from stdin and writes
+  # /root/.codex/auth.json, which codex prefers for all auth paths.
+  - printenv OPENAI_API_KEY | codex login --with-api-key
+
+  # Sanity-check install and auth before handing off to the AI User.
+  - codex --help | head -5
+  - codex login status
