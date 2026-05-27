@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -329,7 +330,7 @@ class Extractor:
         start = time.monotonic()
         submit_tool = SubmitExtractionManifestTool()
 
-        session_id = f"extractor-{int(time.time())}"
+        session_id = f"extractor-{uuid.uuid4().hex[:8]}"
         session = await self._prepared.create_session(
             session_id=session_id,
             session_cwd=Path.cwd(),

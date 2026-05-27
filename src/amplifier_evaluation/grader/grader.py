@@ -18,8 +18,11 @@ The final weighted score is computed across all evaluations.
 
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 import time
+import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -31,6 +34,8 @@ from amplifier_evaluation.grader.tools import (
     SubmitRubricTool,
     validate_rubric_submission,
 )
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_FOUNDATION_SOURCE = "git+https://github.com/microsoft/amplifier-foundation@main"
@@ -133,6 +138,44 @@ flagged; leave correct entries as they were.
 """
 
 
+async def _push_mounts(
+    dtu_id: str,
+    mounts: list,
+    grader_data_dir: Path,
+) -> None:
+    """Push `Mount` entries from the host into the running DTU.
+
+    Each mount is resolved as `grader_data_dir / source` on the host and
+    pushed to its `destination` inside the DTU via `amplifier-digital-twin
+    file-push`. Raises RuntimeError on the first failed push so the caller
+    can mark the evaluation as failed deterministically.
+    """
+    for m in mounts:
+        src = (grader_data_dir / m.source).resolve()
+        if not src.exists():
+            raise RuntimeError(
+                f"mount source not found: {src} "
+                f"(grader_data_dir={grader_data_dir}, source={m.source})"
+            )
+        logger.info("grader.mounts: pushing %s -> %s:%s", src, dtu_id, m.destination)
+        proc = await asyncio.create_subprocess_exec(
+            "amplifier-digital-twin",
+            "file-push",
+            dtu_id,
+            str(src),
+            m.destination,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            raise RuntimeError(
+                f"file-push failed for {src} -> {dtu_id}:{m.destination} "
+                f"(exit {proc.returncode}): "
+                f"{stderr.decode('utf-8', errors='replace').strip()}"
+            )
+
+
 @dataclass
 class EvaluationResult:
     """Outcome of one evaluation's audit pass."""
@@ -204,6 +247,7 @@ class Grader:
         task_context: str,
         dtu_id: str,
         output_dir: Path | str,
+        grader_data_dir: Path | str | None = None,
     ) -> GraderResult:
         """Audit a DTU against a grader.yaml. Runs each evaluation in turn.
 
@@ -216,6 +260,9 @@ class Grader:
             output_dir: Directory on the host where initial reports and rubric
                 JSON files will be written. Per-evaluation subdirectories are
                 created under here.
+            grader_data_dir: Host directory where `mounts[].source` paths are
+                resolved against. Defaults to `<grader.yaml parent>/grader-data`
+                if that directory exists, else the grader.yaml's parent.
         """
         if self._prepared is None:
             raise RuntimeError("Grader.setup() must be called before run().")
@@ -223,20 +270,43 @@ class Grader:
         out = Path(output_dir)
         out.mkdir(parents=True, exist_ok=True)
 
+        grader_yaml = Path(grader_yaml_path)
+        if grader_data_dir is None:
+            default = grader_yaml.parent / "grader-data"
+            data_dir = default if default.is_dir() else grader_yaml.parent
+        else:
+            data_dir = Path(grader_data_dir)
+
         config = GraderConfig.from_yaml(grader_yaml_path)
 
         start = time.monotonic()
-        eval_results: list[EvaluationResult] = []
+        # Each evaluation runs in its own Foundation session against the same
+        # live DTU; they are independent audits. Run them concurrently. The
+        # absolute rule "never modify the agent's files" makes parallel reads
+        # safe; if a future evaluation needs write access we will need to
+        # serialize again.
+        eval_dirs = []
         for evaluation in config.evaluations:
             eval_dir = out / evaluation.name
             eval_dir.mkdir(parents=True, exist_ok=True)
-            result = await self._run_one_evaluation(
-                evaluation=evaluation,
-                task_context=task_context,
-                dtu_id=dtu_id,
-                eval_dir=eval_dir,
+            eval_dirs.append(eval_dir)
+
+        eval_results: list[EvaluationResult] = list(
+            await asyncio.gather(
+                *(
+                    self._run_one_evaluation(
+                        evaluation=evaluation,
+                        task_context=task_context,
+                        dtu_id=dtu_id,
+                        eval_dir=eval_dir,
+                        grader_data_dir=data_dir,
+                    )
+                    for evaluation, eval_dir in zip(
+                        config.evaluations, eval_dirs, strict=True
+                    )
+                )
             )
-            eval_results.append(result)
+        )
 
         total_weight = sum(e.weight for e in config.evaluations) or 1.0
         overall = sum(r.score * r.weight for r in eval_results) / total_weight
@@ -259,12 +329,25 @@ class Grader:
         task_context: str,
         dtu_id: str,
         eval_dir: Path,
+        grader_data_dir: Path,
     ) -> EvaluationResult:
-        assert self._prepared is not None
+        if self._prepared is None:
+            raise RuntimeError("Grader.setup() must be called before run().")
         start = time.monotonic()
+
+        # Deterministic file pushes before the auditor runs. The grader yaml's
+        # `mounts:` lists host -> DTU copies; we resolve sources against the
+        # grader-data directory.
+        if evaluation.mounts:
+            await _push_mounts(
+                dtu_id=dtu_id,
+                mounts=evaluation.mounts,
+                grader_data_dir=grader_data_dir,
+            )
+
         submit_tool = SubmitRubricTool(evaluation)
 
-        session_id = f"grader-{evaluation.name}-{int(time.time())}"
+        session_id = f"grader-{evaluation.name}-{uuid.uuid4().hex[:8]}"
         session = await self._prepared.create_session(
             session_id=session_id,
             session_cwd=Path.cwd(),

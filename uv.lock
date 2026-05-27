@@ -9,6 +9,7 @@ source = { editable = "." }
 dependencies = [
     { name = "amplifier-core" },
     { name = "amplifier-foundation" },
+    { name = "click" },
     { name = "pyyaml" },
 ]
 
@@ -22,6 +23,7 @@ dev = [
 requires-dist = [
     { name = "amplifier-core", editable = "../amplifier-core" },
     { name = "amplifier-foundation", editable = "../amplifier-foundation" },
+    { name = "click", specifier = ">=8.0,<9.0" },
     { name = "pyyaml", specifier = ">=6.0,<7.0" },
 ]
 
