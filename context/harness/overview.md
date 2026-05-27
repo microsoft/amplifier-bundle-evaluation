@@ -18,7 +18,7 @@ amplifier-bundle-evaluation/
 │   ├── ai_user/        # AIUser, ConcludeTool, personas, system instruction
 │   ├── grader/         # Grader, SubmitRubricTool, schema parser, rubric validation
 │   ├── extractor/      # Extractor, SubmitExtractionManifestTool, manifest validation
-│   └── harness/        # orchestration: loaders, dtu, install, state, trial, scheduler, progress, run
+│   └── harness/        # orchestration: loaders, dtu, install, state, trial, scheduler, events, run
 └── amplifier-benchmark/      # benchmark dataset
     ├── agents/         # per-agent definitions: install.yaml, invocation.md, data.yaml, meta.yaml
     └── tasks/          # per-task definitions: task.yaml, profile.yaml, grader.yaml, meta.yaml, grader-data/, workspace/
@@ -157,7 +157,7 @@ asyncio.run(main())
 
 ## Harness
 
-The harness in `src/amplifier_evaluation/harness/` is a flat set of modular pieces: `loaders`, `dtu`, `install`, `state`, `trial`, `scheduler`, and `progress`. Each has a single responsibility and a small typed contract, so consumers compose what they need: load tasks and agents from disk, wrap the DTU CLI from Python, install an agent into a running DTU, run one trial end to end, schedule many trials in parallel, render live progress, or persist trial state for resumability. Together they orchestrate AI User, Extractor, and Grader across many `(agent, task, trial)` combinations: per trial they launch a Digital Twin Universe instance, install the agent, seed the workspace, drive the agent through the AI User, extract artifacts to the host, run the grader, and destroy the DTU. Parallelism is capped by a semaphore so a batch of trials can run concurrently without saturating the host. Every state transition is written atomically to a per-trial `state.json`, so a crashed harness can be re-run and resume, an external observer can read live progress without the harness emitting events, and an operator can write `cancel_requested` or `retry_requested` to that file to course-correct a multi-day run.
+The harness in `src/amplifier_evaluation/harness/` is a flat set of modular pieces: `loaders`, `dtu`, `install`, `state`, `trial`, `scheduler`, and `events`. Each has a single responsibility and a small typed contract, so consumers compose what they need: load tasks and agents from disk, wrap the DTU CLI from Python, install an agent into a running DTU, run one trial end to end, schedule many trials in parallel, print a flat per-trial event log, or persist trial state for resumability. Together they orchestrate AI User, Extractor, and Grader across many `(agent, task, trial)` combinations: per trial they launch a Digital Twin Universe instance, install the agent, seed the workspace, drive the agent through the AI User, extract artifacts to the host, run the grader, and destroy the DTU. Parallelism is capped by a semaphore so a batch of trials can run concurrently without saturating the host. Every state transition is written atomically to a per-trial `state.json`, so a crashed harness can be re-run and resume, an external observer can read live progress without the harness emitting events, and an operator can write `cancel_requested` or `retry_requested` to that file to course-correct a multi-day run.
 
 As one worked example, the package ships an assembled `run()` entry point that wires every brick together with sensible defaults. It is intentionally short and meant to be copied and edited; consumers with different needs should treat it as a template, not a fixed API.
 
