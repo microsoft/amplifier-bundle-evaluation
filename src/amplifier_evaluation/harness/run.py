@@ -294,7 +294,7 @@ def main(argv: list[str] | None = None) -> int:
             output_dir=args.output,
             trials_per_pair=args.trials_per_pair,
             max_parallel=args.max_parallel,
-            show_progress=not args.no_progress,
+            show_progress=not args.quiet,
         )
     )
 
