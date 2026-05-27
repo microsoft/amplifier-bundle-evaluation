@@ -18,6 +18,7 @@ the agent directly through tool calls, guided by the invocation guide.
 from __future__ import annotations
 
 import time
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -219,7 +220,7 @@ class AIUser:
         start = time.monotonic()
         conclude_tool = ConcludeTool()
 
-        session_id = f"ai-user-{int(time.time())}"
+        session_id = f"ai-user-{uuid.uuid4().hex[:8]}"
         session = await self._prepared.create_session(
             session_id=session_id,
             session_cwd=Path.cwd(),

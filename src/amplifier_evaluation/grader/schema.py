@@ -8,7 +8,7 @@ aggregates a weighted overall score.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +25,19 @@ class Criterion:
 
 
 @dataclass
+class Mount:
+    """A host -> DTU file/directory copy performed before an evaluation runs.
+
+    `source` is interpreted relative to the grader-data directory (sibling of
+    grader.yaml by convention). `destination` is an absolute path inside the
+    Digital Twin Universe.
+    """
+
+    source: str
+    destination: str
+
+
+@dataclass
 class Evaluation:
     """One weighted scored audit within a grader.yaml.
 
@@ -32,12 +45,18 @@ class Evaluation:
     Digital Twin Universe to inform its scoring. `rubric` is the ordered list
     of criteria; the JSON name in grader.yaml becomes `Criterion.name` and is
     used as the key when scoring is submitted.
+
+    `mounts` lists deterministic file/directory pushes performed *before* the
+    auditor runs. Use this for evaluation helper scripts, fixtures, or data
+    the auditor needs to see inside the DTU. Paths in `source` are relative
+    to the grader-data directory.
     """
 
     name: str
     weight: float
     steps: str
     rubric: list[Criterion]
+    mounts: list[Mount] = field(default_factory=list)
 
     @property
     def total_points(self) -> int:
@@ -100,4 +119,20 @@ def _parse_evaluation(data: dict[str, Any]) -> Evaluation:
             )
         )
 
-    return Evaluation(name=name, weight=weight, steps=steps, rubric=rubric)
+    mounts_raw = data.get("mounts", [])
+    if not isinstance(mounts_raw, list):
+        raise ValueError("`mounts:` must be a list when present")
+    mounts: list[Mount] = []
+    for i, m in enumerate(mounts_raw):
+        if not isinstance(m, dict):
+            raise ValueError(f"mounts[{i}]: must be a mapping")
+        try:
+            mounts.append(
+                Mount(source=str(m["source"]), destination=str(m["destination"]))
+            )
+        except KeyError as exc:
+            raise ValueError(f"mounts[{i}]: missing required field {exc}") from exc
+
+    return Evaluation(
+        name=name, weight=weight, steps=steps, rubric=rubric, mounts=mounts
+    )

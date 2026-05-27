@@ -38,3 +38,6 @@ logs/
 
 examples/*/results/
 .amplifier/evaluations/*/results/
+
+# Benchmark runs from scripts/run_benchmark.py
+results/

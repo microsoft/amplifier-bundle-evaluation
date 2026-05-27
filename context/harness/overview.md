@@ -7,6 +7,7 @@ The intent is one package, four pieces that can be used together or in isolation
 - `ai_user` (implemented): drives an agent in a DTU like a real user would.
 - `grader` (implemented): scores agent output against a rubric defined in `amplifier-benchmark/tasks/<task>/grader.yaml`.
 - `extractor` (implemented): pulls the agent's work (deliverables + session logs) out of a DTU onto the host so it can be analyzed later. Uses `amplifier-benchmark/agents/<agent>/data.yaml` as a hint.
+- `harness` (implemented): orchestrates the three pieces above across many `(agent, task, trial)` combinations, manages DTU lifecycle and parallelism, and persists every state transition to disk for resumability and external observation. See [`harness_modules.md`](harness_modules.md) for the per-module breakdown.
 
 ## Layout
 
@@ -17,7 +18,7 @@ amplifier-bundle-evaluation/
 │   ├── ai_user/        # AIUser, ConcludeTool, personas, system instruction
 │   ├── grader/         # Grader, SubmitRubricTool, schema parser, rubric validation
 │   ├── extractor/      # Extractor, SubmitExtractionManifestTool, manifest validation
-│   └── orchestrator/   # placeholder
+│   └── harness/        # orchestration: loaders, dtu, install, state, trial, scheduler, progress, run
 └── amplifier-benchmark/      # benchmark dataset
     ├── agents/         # per-agent definitions: install.yaml, invocation.md, data.yaml, meta.yaml
     └── tasks/          # per-task definitions: task.yaml, profile.yaml, grader.yaml, meta.yaml, grader-data/, workspace/
@@ -153,6 +154,36 @@ asyncio.run(main())
 ```
 
 `ExtractionResult` exposes `session_dirs`, `workspace_dir`, and `workspace_paths` helper properties so the orchestrator can find artifacts without inspecting categories itself. `Extractor(foundation_source=..., provider_source=...)` accepts the same sources as `AIUser`.
+
+## Harness
+
+The harness in `src/amplifier_evaluation/harness/` is a flat set of modular pieces: `loaders`, `dtu`, `install`, `state`, `trial`, `scheduler`, and `progress`. Each has a single responsibility and a small typed contract, so consumers compose what they need: load tasks and agents from disk, wrap the DTU CLI from Python, install an agent into a running DTU, run one trial end to end, schedule many trials in parallel, render live progress, or persist trial state for resumability. Together they orchestrate AI User, Extractor, and Grader across many `(agent, task, trial)` combinations: per trial they launch a Digital Twin Universe instance, install the agent, seed the workspace, drive the agent through the AI User, extract artifacts to the host, run the grader, and destroy the DTU. Parallelism is capped by a semaphore so a batch of trials can run concurrently without saturating the host. Every state transition is written atomically to a per-trial `state.json`, so a crashed harness can be re-run and resume, an external observer can read live progress without the harness emitting events, and an operator can write `cancel_requested` or `retry_requested` to that file to course-correct a multi-day run.
+
+As one worked example, the package ships an assembled `run()` entry point that wires every brick together with sensible defaults. It is intentionally short and meant to be copied and edited; consumers with different needs should treat it as a template, not a fixed API.
+
+Minimal usage:
+
+```python
+import asyncio
+from amplifier_evaluation.harness.run import run
+
+async def main():
+    result = await run(
+        agents_dir="amplifier-benchmark/agents",
+        tasks_dir="amplifier-benchmark/tasks",
+        selection=[
+            ("amplifier-foundation", "cpsc_recall_monitor"),
+            ("openai-codex-cli", "cpsc_recall_monitor"),
+        ],
+        output_dir="results/my-run",
+        max_parallel=2,
+    )
+    print(result.summary_counts)
+
+asyncio.run(main())
+```
+
+For the per-module breakdown, contracts, course-correction surface, and on-disk layout, see [`harness_modules.md`](harness_modules.md).
 
 ## Dependencies
 
