@@ -7,7 +7,7 @@ only place that knows the full sequence of stages.
 Stages (deterministic order):
 
     launching   -> launch DTU from the resolved profile
-    installing  -> run agent setup_cmds (no-op for dtu_profile agents)
+    installing  -> run agent setup_cmds inside the launched DTU
     seeding     -> push task workspace + task instructions
     running_agent -> AIUser drives the agent until conclude / timeout
     extracting  -> Extractor pulls agent artifacts to host
@@ -40,8 +40,8 @@ from amplifier_evaluation.harness import state as state_io
 from amplifier_evaluation.harness.dtu import DTU, DTUError
 from amplifier_evaluation.harness.install import (
     InstallError,
+    compose_launch_profile,
     install_agent,
-    select_profile_path,
     verify_env,
 )
 from amplifier_evaluation.harness.schema import (
@@ -132,7 +132,16 @@ async def run_trial(
         # ---- launch ----------------------------------------------------
         _check_cancel(trial_dir)
         state_io.transition(trial_dir, record, TrialState.LAUNCHING)
-        profile_path = select_profile_path(spec.agent, spec.task.profile_path)
+        # Synthesize a merged profile that adds the agent's `requires.env`
+        # entries to the task profile's `passthrough.services`, so agents
+        # don't depend on each task profile pre-declaring every possible
+        # API key. The merged profile is written to the trial dir for
+        # auditability.
+        profile_path = compose_launch_profile(
+            spec.agent,
+            spec.task.profile_path,
+            trial_dir / "launch_profile.yaml",
+        )
         dtu = await DTU.launch(profile_path)
         record.dtu_id = dtu.id
         state_io.save_state(trial_dir, record)
