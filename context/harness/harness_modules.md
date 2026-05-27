@@ -69,7 +69,7 @@ from amplifier_evaluation.harness.install import (
 
 missing = verify_env(agent)  # checks install.yaml requires.env[]
 profile_path = select_profile_path(agent, task.profile_path)
-# walks up all ancestors of agent.dir to find dtu_profile paths
+# tries the cwd, then the agent's own directory. No ancestor walk.
 await install_agent(agent, dtu, log_to=Path("install.log"))
 ```
 
@@ -139,26 +139,38 @@ Failures inside one trial never propagate to others. The scheduler also catches 
 
 The scheduler emits no events. Progress observation is via the `state.json` files instead, which means external observers see exactly the same data the built-in UI does.
 
-## progress
+## events
 
-`progress.py` polls each trial's `state.json` and renders a Rich live table. It runs as a separate `asyncio.Task` alongside the scheduler, so headless runs can skip it without changing anything else.
+`events.py` polls each trial's `state.json` and prints a flat event log to stdout. It runs as a separate `asyncio.Task` alongside the scheduler, so headless runs can skip it without changing anything else. No third-party UI dependency: it is plain `print()` lines.
 
 ```python
 import asyncio
-from amplifier_evaluation.harness.progress import render_progress
+from amplifier_evaluation.harness.events import render_events
 
 stop_event = asyncio.Event()
-ui_task = asyncio.create_task(render_progress(specs, trials_root, stop_event))
+ui_task = asyncio.create_task(render_events(specs, trials_root, stop_event))
 # ...run the scheduler...
 stop_event.set()
 await ui_task
 ```
 
-If Rich is not installed, a plain-text fallback prints a one-line summary every refresh interval.
+One line is emitted on the first transition into each interesting state:
+
+```
+PENDING      -> LAUNCHING       "trial started"
+LAUNCHING    -> INSTALLING      "dtu launched   dtu_id=<id>"
+*            -> RUNNING_AGENT   "agent running  timeout=<n>s"
+*            -> GRADING         "-> grading     verdict=<v>"
+*            -> COMPLETED       "finished       completed  score=<x>  <elapsed>"
+*            -> FAILED          "finished       failed     error=<head>  <elapsed>"
+*            -> CANCELLED       "finished       cancelled  <elapsed>"
+```
+
+`SEEDING`, `EXTRACTING`, `CLEANING_UP`, and `PENDING` are intentionally silent on the console; full detail still lands in `harness.log`. Each line is prefixed with a `[HH:MM:SS]` timestamp and a fixed-width `agent x task` label so output from concurrent trials stays readable.
 
 ## run
 
-`run.py` is the assembled entry point and the "example" wiring of every other module. It is intentionally short (around 100 lines): load, build trial specs, share one AIUser/Grader/Extractor across all trials (expensive `setup()` called once), schedule, optionally render progress, write `run.json` + `summary.json`.
+`run.py` is the assembled entry point and the "example" wiring of every other module: load, build trial specs, share one AIUser/Grader/Extractor across all trials (expensive `setup()` called once), schedule, optionally render the event log, write `run.json` + `summary.json`. It also configures logging so detail goes to `<output_dir>/harness.log` while the console stays quiet enough for the event log to own stdout.
 
 ```python
 from amplifier_evaluation.harness.run import run
