@@ -1,0 +1,17 @@
+instructions: |
+  Build a CLI tool that generates a user-friendly, categorized changelog between two git commits or
+  tags in a repository. The tool should go beyond a raw git log by using an LLM to intelligently
+  categorize and summarize the changes into a polished markdown document.
+
+  The tool should:
+  1. Accept a git repository URL (or local path) and two commit references (tags, SHAs, or branch
+     names) as input via the command line.
+  2. Use agents to produce a well-structured markdown changelog that categorizes and summarizes
+     the changes between the two references. The result should be something a developer or manager
+     could read to quickly understand what changed, not a raw git log.
+  3. Save the output to a markdown file (the filename or output path should be configurable via a
+     CLI option, with a sensible default).
+  4. Handle edge cases gracefully: invalid refs, empty commit ranges, network errors when cloning.
+
+  Include a README.md with usage instructions, examples, and a description of how the tool works.
+  You have an OPENAI_API_KEY and ANTHROPIC_API_KEY available for any LLM API calls you need to make.

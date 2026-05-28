@@ -1,0 +1,18 @@
+instructions: |
+  I want a CLI tool called "pixelart" that generates game-ready pixel art sprites.
+  Place the code under scenarios/pixel_art_generator.
+
+  It should use an OpenAI image model to generate the initial image, then post-process
+  it down to actual pixel art: the right dimensions, limited color palette, transparent
+  background, no blurring. The output should be a PNG I can drop into a game engine.
+
+  I need three commands:
+  - `pixelart generate "a knight with a sword" --size 32 --output knight.png` to generate
+    a single sprite. Size should be configurable (8, 16, 32, 64) and default to 32. I also
+    want a --palette-size option to control the number of colors (default 16).
+  - `pixelart inspect sprite.png` to show me the properties of a sprite (dimensions, colors,
+    transparency, etc.)
+  - `pixelart batch descriptions.json --size 32 --output-dir sprites/` to generate multiple
+    sprites from a JSON file where each entry has a "name" and "description".
+
+  Include a README with usage examples. You have an OPENAI_API_KEY and ANTHROPIC_API_KEY available.

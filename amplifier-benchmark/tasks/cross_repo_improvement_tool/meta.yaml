@@ -1,0 +1,6 @@
+name: cross_repo_improvement_tool
+difficulty: hard
+categories:
+- cli_tool
+- ai_tool
+timeout: 4500

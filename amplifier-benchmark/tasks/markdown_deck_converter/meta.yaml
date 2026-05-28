@@ -1,0 +1,6 @@
+name: markdown_deck_converter
+difficulty: hard
+categories:
+- cli_tool
+- knowledge_worker
+timeout: 4500

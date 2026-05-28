@@ -1,0 +1,5 @@
+name: pdf-hr-q4
+difficulty: hard
+categories:
+- pdf_extraction
+timeout: 1800

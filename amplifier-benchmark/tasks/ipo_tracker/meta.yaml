@@ -1,0 +1,6 @@
+name: ipo_tracker
+difficulty: medium
+categories:
+- cli_tool
+- knowledge_worker
+timeout: 3600

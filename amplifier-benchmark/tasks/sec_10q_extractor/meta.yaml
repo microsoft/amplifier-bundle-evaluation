@@ -1,0 +1,6 @@
+name: sec_10q_extractor
+difficulty: hard
+categories:
+- cli_tool
+- knowledge_worker
+timeout: 5400

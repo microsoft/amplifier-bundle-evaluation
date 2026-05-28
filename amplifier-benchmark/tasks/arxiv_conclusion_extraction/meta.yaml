@@ -1,0 +1,5 @@
+name: arxiv_conclusion_extraction
+difficulty: easy
+categories:
+- web
+timeout: 1800

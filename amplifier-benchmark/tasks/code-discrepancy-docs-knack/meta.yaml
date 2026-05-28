@@ -1,0 +1,5 @@
+name: code-discrepancy-docs-knack
+difficulty: medium
+categories:
+- code-docs-discrepancy
+timeout: 4500
