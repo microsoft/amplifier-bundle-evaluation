@@ -1,0 +1,8 @@
+name: product_review_finder
+difficulty: medium
+categories:
+- cli_tool
+- ai_tool
+- knowledge_worker
+- web
+timeout: 4500

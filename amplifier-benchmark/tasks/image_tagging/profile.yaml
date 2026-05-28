@@ -1,0 +1,24 @@
+name: eval-task-image-tagging
+description: Evaluation task environment for image_tagging. Ubuntu 24.04 with uv, outbound internet, and Anthropic/OpenAI key passthrough.
+base:
+  image: ubuntu:24.04
+passthrough:
+  allow_external: true
+  services:
+  - name: anthropic
+    key_env: ANTHROPIC_API_KEY
+  - name: openai
+    key_env: OPENAI_API_KEY
+provision:
+  setup_cmds:
+  - apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates && rm -rf /var/lib/apt/lists/*
+  - curl -LsSf https://astral.sh/uv/install.sh | sh
+  - mkdir -p /workspace
+  - apt-get update && apt-get install -y --no-install-recommends zstd && rm -rf /var/lib/apt/lists/*
+  - curl -fsSL https://ollama.com/install.sh | sh
+  - nohup ollama serve > /dev/null 2>&1 & sleep 5 && ollama pull gemma3:4b-it-q4_K_M
+readiness:
+- name: uv-installed
+  command: uv --version
+- name: ollama-installed
+  command: which ollama

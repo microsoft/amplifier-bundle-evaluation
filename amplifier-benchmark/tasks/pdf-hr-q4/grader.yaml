@@ -1,0 +1,29 @@
+evaluations:
+- name: end_to_end
+  weight: 1.0
+  steps: |
+    1. Find and read the file `data_analysis_answer.txt` in the project directory.
+    2. Compare the answer against the expected median salaries for each performance rating:
+       - Rating 1: $60,000 (acceptable range: $59,400 - $60,600)
+       - Rating 2: $63,550 (acceptable range: $62,915 - $64,186)
+       - Rating 3: $80,700 (acceptable range: $79,893 - $81,507)
+       - Rating 4: $85,600 (acceptable range: $84,744 - $86,456)
+       - Rating 5: $89,250 (acceptable range: $88,358 - $90,143)
+    3. For each rating, check if the value in the answer is within the acceptable range.
+    4. Award 20 points for each correct rating.
+  rubric:
+    rating_1_correct:
+      points: 20
+      description: Is Rating 1's median salary within tolerance?
+    rating_2_correct:
+      points: 20
+      description: Is Rating 2's median salary within tolerance?
+    rating_3_correct:
+      points: 20
+      description: Is Rating 3's median salary within tolerance?
+    rating_4_correct:
+      points: 20
+      description: Is Rating 4's median salary within tolerance?
+    rating_5_correct:
+      points: 20
+      description: Is Rating 5's median salary within tolerance?

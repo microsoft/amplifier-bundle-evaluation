@@ -1,0 +1,21 @@
+evaluations:
+- name: end_to_end
+  weight: 1.0
+  steps: |
+    1. Find and read the file `data_analysis_answer.txt` in /workspace/.
+       - If the file is missing or empty, assign a score of 0.
+    2. Extract the numeric answer from the file. Accept any of these formats (they are all equivalent):
+       - "MX$ 1,531,989.62"
+       - "1,531,989.62"
+       - "1531989.62"
+       - "$1,531,989.62"
+       Strip currency prefixes (MX$, $, MX, USD), commas, and whitespace before comparing.
+    3. The expected groundtruth value is 1,531,989.62 MX$ (the average base salary for the Consumer Home & Office Products division at the Mexico City Manufacturing plant).
+    4. Compute the percent difference between the extracted value and 1,531,989.62.
+    5. Award the points based on tolerance:
+       - Within 1% of groundtruth (1,516,669.72 to 1,547,309.52): full points.
+       - Outside 1%: 0 points.
+  rubric:
+    answer_within_tolerance:
+      points: 100
+      description: Is the answer in data_analysis_answer.txt within 1% of the groundtruth value MX$1,531,989.62 (i.e. between 1,516,669.72 and 1,547,309.52)?

@@ -1,0 +1,6 @@
+name: pixel_art_generator
+difficulty: hard
+categories:
+- cli_tool
+- ai_tool
+timeout: 3600

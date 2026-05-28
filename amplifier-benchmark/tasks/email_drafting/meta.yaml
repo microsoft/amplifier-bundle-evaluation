@@ -1,0 +1,6 @@
+name: email_drafting
+difficulty: medium
+categories:
+- cli_tool
+- ai_tool
+timeout: 5400

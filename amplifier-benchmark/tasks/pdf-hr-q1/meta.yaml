@@ -1,0 +1,5 @@
+name: pdf-hr-q1
+difficulty: medium
+categories:
+- pdf_extraction
+timeout: 1800

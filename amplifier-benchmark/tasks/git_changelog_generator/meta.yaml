@@ -1,0 +1,6 @@
+name: git_changelog_generator
+difficulty: medium
+categories:
+- cli_tool
+- ai_tool
+timeout: 5400

@@ -1,0 +1,6 @@
+name: arxiv_paper_summarizer
+difficulty: medium
+categories:
+- cli_tool
+- ai_tool
+timeout: 4500

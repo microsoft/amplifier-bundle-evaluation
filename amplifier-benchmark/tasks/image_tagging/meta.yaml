@@ -1,0 +1,6 @@
+name: image_tagging
+difficulty: easy
+categories:
+- cli_tool
+- ai_tool
+timeout: 4500

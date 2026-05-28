@@ -1,0 +1,6 @@
+name: repo_embedding_server
+difficulty: hard
+categories:
+- service
+- ai_tool
+timeout: 4500

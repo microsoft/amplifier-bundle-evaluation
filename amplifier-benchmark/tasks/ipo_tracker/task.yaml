@@ -1,0 +1,13 @@
+instructions: |
+  I need a CLI tool that finds companies planning to IPO on US stock exchanges within the next 365 days from today.
+
+  The output should be a CSV file with these columns:
+  - company_name: Name of the company planning to IPO
+  - expected_date: Expected IPO date or timeframe (e.g., "Q2 2025", "June 2025", "2025")
+  - exchange: Target exchange (NYSE or NASDAQ) if known, otherwise "Unknown"
+  - sector: Industry sector (e.g., "Technology", "Healthcare", "Finance")
+  - description: Brief one-line description of what the company does
+  - source_url: URL of the source article or filing
+
+  Include a README.md with usage instructions.
+  You have an OPENAI_API_KEY and ANTHROPIC_API_KEY available for any LLM or image API calls you need to make.

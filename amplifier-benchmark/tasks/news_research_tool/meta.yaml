@@ -1,0 +1,6 @@
+name: news_research_tool
+difficulty: hard
+categories:
+- cli_tool
+- ai_tool
+timeout: 4500
