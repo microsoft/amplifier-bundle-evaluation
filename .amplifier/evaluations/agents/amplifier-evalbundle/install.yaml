@@ -1,0 +1,49 @@
+# Setup commands the harness runs inside the task DTU to install this agent.
+# Each command is executed via `bash -lc` after the profile has provisioned
+# the OS and the readiness checks have passed.
+#
+# Assumes the task profile has:
+#   - uv on PATH (installed during profile provision)
+#   - ANTHROPIC_API_KEY in the container env (passthrough.services entry)
+#   - url_rewrites redirecting github.com/microsoft/amplifier-bundle-evaluation
+#     to a local Gitea mirror whose `main` branch is the local branch HEAD the
+#     wrapper deployed (run.sh publishes the local ref AS `main`).
+#
+# We compose `@main` on purpose: it both matches the deployed mirror and lines
+# up with how Amplifier re-resolves app bundles at session start (it clones the
+# DEFAULT branch). Pinning a feature branch here would break that re-resolution
+# even though the explicit add succeeds. Once the bundle is public on GitHub the
+# Gitea mirror becomes optional, but the `@main` reference stays the same.
+
+requires:
+  env:
+    - ANTHROPIC_API_KEY
+
+setup_cmds:
+  - uv tool install -vv git+https://github.com/microsoft/amplifier
+  - |
+    mkdir -p /root/.amplifier
+    cat > /root/.amplifier/settings.yaml << EOF
+    config:
+      providers:
+        - module: provider-anthropic
+          source: git+https://github.com/microsoft/amplifier-module-provider-anthropic@main
+          config:
+            api_key: $ANTHROPIC_API_KEY
+    EOF
+  - amplifier bundle add git+https://github.com/microsoft/amplifier-foundation@main --app
+  - amplifier bundle add git+https://github.com/microsoft/amplifier-bundle-evaluation@main --app
+  # DTU + Gitea CLIs and bundles so the /evaluation mode can launch nested
+  # DTUs (DTU-in-DTU) and mirror the inner bundle to actually run an
+  # evaluation. The profile provisions Incus + Docker; these add the tools
+  # and bundle awareness on top.
+  - uv tool install git+https://github.com/microsoft/amplifier-bundle-digital-twin-universe
+  - uv tool install git+https://github.com/microsoft/amplifier-bundle-gitea
+  - amplifier bundle add git+https://github.com/microsoft/amplifier-bundle-digital-twin-universe@main --app
+  - amplifier bundle add git+https://github.com/microsoft/amplifier-bundle-gitea@main --app
+  - amplifier --version
+  - amplifier-digital-twin --help >/dev/null && echo "amplifier-digital-twin OK"
+  - amplifier-gitea --help >/dev/null && echo "amplifier-gitea OK"
+  - amplifier bundle list | tee /tmp/bundle-list.txt
+  - grep -qi evaluation /tmp/bundle-list.txt
+  - grep -qi digital-twin /tmp/bundle-list.txt

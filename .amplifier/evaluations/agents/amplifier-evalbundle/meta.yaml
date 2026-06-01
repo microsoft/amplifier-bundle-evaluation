@@ -1,0 +1,6 @@
+name: amplifier-evalbundle
+description: >
+  Amplifier CLI with amplifier-foundation and amplifier-bundle-evaluation
+  composed onto every session. This is the "bundle under test" for the
+  meta-evaluations: the agent is just an amplifier session whose tools and
+  modes are what we are scoring.

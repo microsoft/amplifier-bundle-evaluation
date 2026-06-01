@@ -84,6 +84,13 @@ class TrialSpec:
     agent: AgentSpec
     task: TaskSpec
     trial_number: int
+    # Variables to pass through to `amplifier-digital-twin launch --var k=v`.
+    # The DTU CLI substitutes `${KEY}` references in the profile (most
+    # commonly inside `url_rewrites:` blocks pointing at a local Gitea
+    # mirror). Set per-trial so different tasks can launch with different
+    # variables; the run-level value in `RunSpec.launch_variables` is the
+    # default applied to every trial.
+    launch_variables: dict[str, str] | None = None
 
     @property
     def trial_id(self) -> str:
@@ -135,6 +142,13 @@ class RunSpec:
     trials_per_pair: int = 1
     max_parallel: int = 2
     show_progress: bool = True
+    # Variables threaded through to every trial's `DTU.launch(variables=...)`,
+    # i.e. `amplifier-digital-twin launch --var KEY=VAL ...`. The DTU CLI
+    # substitutes `${KEY}` references in the profile, most commonly in
+    # `url_rewrites:` blocks pointing at a local Gitea mirror. Empty by
+    # default; populated from `--launch-var KEY=VAL` on the CLI or from
+    # callers using the Python API.
+    launch_variables: dict[str, str] | None = None
 
 
 @dataclass

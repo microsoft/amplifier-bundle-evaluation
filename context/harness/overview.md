@@ -43,7 +43,7 @@ An agent describes how to install and drive a CLI agent inside a DTU. Each agent
 
 - `meta.yaml`: name, description.
 - `install.yaml`: DTU setup commands and required env vars.
-- `invocation.md`: how to talk to the CLI (first turn, follow-up turns, what "broken" looks like). Read by the AI User as runtime guidance.
+- `invocation.md`: how to talk to the CLI (first turn, follow-up turns). Read by the AI User as runtime guidance.
 - `data.yaml`: where session transcripts and metadata live inside the DTU. Consumed by the extractor.
 
 Two agents ship today: `amplifier-foundation` and `openai-codex-cli`.

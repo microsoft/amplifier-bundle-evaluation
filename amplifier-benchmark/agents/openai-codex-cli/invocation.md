@@ -25,16 +25,3 @@ If a scenario genuinely requires shared context (e.g. "now improve the
 function you just wrote"), include the necessary prior context in the
 message text itself, or use `codex resume --last` which picks up the most
 recent rollout.
-
-## What "broken" looks like
-
-- The command exits non-zero.
-- stdout is empty.
-- The command hangs past a generous timeout (say, 5 minutes).
-- The response talks about needing authentication that does not exist.
-
-In any of those cases, conclude with `verdict=failure`.
-
-## What you do NOT do
-
-You are roleplaying a user. Talk only to the codex CLI.

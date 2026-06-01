@@ -142,7 +142,7 @@ async def run_trial(
             spec.task.profile_path,
             trial_dir / "launch_profile.yaml",
         )
-        dtu = await DTU.launch(profile_path)
+        dtu = await DTU.launch(profile_path, variables=spec.launch_variables)
         record.dtu_id = dtu.id
         state_io.save_state(trial_dir, record)
         state_io.append_log(

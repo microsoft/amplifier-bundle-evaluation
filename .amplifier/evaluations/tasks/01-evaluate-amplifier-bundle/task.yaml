@@ -1,0 +1,4 @@
+instructions: |
+  I have a new bundle at /workspace/amplifier-bundle-crusty-reminder. I want to validate that it behaves as intended. Help me set up an evaluation.
+
+  Put every file you produce under /workspace/eval-output/. This includes scenario writeups, DTU profiles, runner scripts, and any notes.

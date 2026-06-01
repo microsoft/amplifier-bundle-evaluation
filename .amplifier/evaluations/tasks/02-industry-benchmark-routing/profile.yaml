@@ -1,0 +1,52 @@
+# DTU profile for the meta-eval "does /evaluation mode route to industry
+# benchmarks?". A clean Ubuntu 24.04 with uv on PATH and outbound network.
+# The amplifier-evalbundle agent (install.yaml) installs amplifier and
+# composes amplifier-foundation + amplifier-bundle-evaluation on top.
+#
+# url_rewrites redirects amplifier-bundle-evaluation to a local Gitea
+# mirror. The wrapper script (.amplifier/evaluations/run.sh) deploys the
+# local branch HEAD into that mirror AS the `main` branch, so the agent
+# under test composes it exactly as if these changes were merged and
+# active. This matters because Amplifier re-resolves app bundles at session
+# start by cloning the DEFAULT branch (`main`); if the mirror only carried a
+# feature branch that clone would fail and the evaluation mode would vanish.
+#
+# The wrapper discovers a running amplifier-gitea instance, force-pushes the
+# local HEAD to mirror/main, and threads GITEA_URL + GITEA_TOKEN via the
+# harness `--launch-var` flag.
+#
+# Once the bundle is public on GitHub, url_rewrites can be removed.
+
+name: eval02-routing
+description: >
+  Ubuntu 24.04 with uv. Redirects amplifier-bundle-evaluation clones to a
+  local Gitea mirror via url_rewrites.
+
+base:
+  image: ubuntu:24.04
+
+url_rewrites:
+  auth:
+    username: admin
+    token_var: GITEA_TOKEN
+  rules:
+    - match: github.com/microsoft/amplifier-bundle-evaluation
+      target: ${GITEA_URL}/admin/amplifier-bundle-evaluation
+
+passthrough:
+  allow_external: true
+  services:
+    - name: anthropic
+      key_env: ANTHROPIC_API_KEY
+
+provision:
+  setup_cmds:
+    - apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates tmux && rm -rf /var/lib/apt/lists/*
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - mkdir -p /workspace
+
+readiness:
+  - name: uv-installed
+    command: "PATH=/root/.local/bin:$PATH uv --version"
+  - name: workspace-exists
+    command: "test -d /workspace && echo OK"
