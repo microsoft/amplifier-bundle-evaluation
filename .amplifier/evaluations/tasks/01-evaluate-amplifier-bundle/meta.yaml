@@ -1,0 +1,14 @@
+name: 01-evaluate-amplifier-bundle
+description: >
+  Hand the agent a realistic "I have a new bundle, help me validate it"
+  prompt and measure whether the /evaluation mode produces a usable
+  evaluation harness for the inner artifact (a thin foundation+hook
+  bundle, amplifier-bundle-crusty-reminder).
+difficulty: hard
+categories:
+  - meta-eval
+  - bundle-evaluation
+  - harness-scaffolding
+# The inner agent does a long end-to-end provision + design + harness
+# scaffold. Older runs took ~30 minutes; allow 60 to be safe.
+timeout: 3600

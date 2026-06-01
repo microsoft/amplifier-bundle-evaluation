@@ -1,0 +1,76 @@
+# Grader for the industry-benchmark-routing meta-eval.
+#
+# Two semantic evaluations run against the solver's FINAL assistant text
+# (the plan it produced in response to the model-swap validation question):
+#
+#   1. "recommends-amplifier-benchmark" (weight 0.7)
+#      The plan should propose using amplifier-benchmark and starting with
+#      a small sample of about ~5 tasks.
+#
+#   2. "avoids-custom-tasks" (weight 0.3)
+#      The plan should NOT propose inventing custom one-off tasks/scenarios.
+#
+# Both evals read the solver's final assistant text the same way. Score each
+# criterion strictly from that final text only; if unsure, mark `no`.
+
+evaluations:
+  - name: recommends-amplifier-benchmark
+    weight: 0.7
+    steps: |
+      Read the solver's final assistant text from its transcript and score
+      the routing criteria against it.
+
+      1. Locate the solver's session dir at
+         `/root/.amplifier/projects/-workspace/sessions/<sid>/` (the only
+         session under that dir, or the most recently modified if multiple).
+      2. Read `transcript.jsonl` and find the LAST line whose `role` field
+         is `assistant`. Extract its text content:
+            - if `content` is a string, use it directly
+            - if `content` is a list of blocks, take each block where
+              `type == "text"` and concatenate their `text` fields
+      3. Strip ANSI escape sequences (`\x1b\[[0-9;]*m`) from the text.
+      4. Score each criterion strictly from the final assistant text only.
+         Only mark `yes` if the criterion is clearly met. If unsure, mark `no`.
+    rubric:
+      P1_recommends_amplifier_benchmark:
+        points: 1
+        description: >
+          Final text proposes using amplifier-benchmark to validate the
+          change -- either the bundle's `amplifier-benchmark` task suite or
+          the `amplifier-benchmarks` CLI app. Naming "amplifier-benchmark"
+          (or "amplifier-benchmarks") as the recommended way to validate the
+          model swap counts. A generic "run a benchmark" with no reference to
+          amplifier-benchmark does NOT count.
+      P2_proposed_small_sample_size:
+        points: 1
+        description: >
+          Final text proposes starting with a small sample of about ~5 tasks
+          (acceptable range 1-10) before scaling up, rather than running the
+          full suite immediately. "Start with ~5 tasks", "begin with a
+          handful", or "n=5 first" all count. Proposing to run the full set
+          of tasks with no mention of starting small does NOT count.
+
+  - name: avoids-custom-tasks
+    weight: 0.3
+    steps: |
+      Read the solver's final assistant text (same extraction as the
+      `recommends-amplifier-benchmark` eval) and score the anti-signal.
+
+      1. Locate the solver's session dir at
+         `/root/.amplifier/projects/-workspace/sessions/<sid>/` (the only
+         session under that dir, or the most recently modified if multiple).
+      2. Read `transcript.jsonl`, find the LAST `assistant` line, and extract
+         its text (string content directly, or concatenated `text` blocks).
+      3. Strip ANSI escape sequences (`\x1b\[[0-9;]*m`) from the text.
+      4. Score the criterion strictly from the final assistant text only.
+    rubric:
+      N1_did_not_suggest_custom_tasks:
+        points: 1
+        description: >
+          Score `yes` if the plan does NOT suggest creating custom or
+          one-off tasks/scenarios for this validation (e.g. "write a few
+          custom prompts and compare outputs", "author bespoke tasks tied to
+          your workflow"). Recommending the off-the-shelf amplifier-benchmark
+          tasks does NOT trip this -- the anti-signal is *proposing to invent
+          new custom tasks/scenarios*. Score `no` if the plan does suggest
+          creating custom tasks/scenarios.

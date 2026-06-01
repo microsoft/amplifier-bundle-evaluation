@@ -105,6 +105,7 @@ def _build_trial_specs(
     tasks: dict,
     selection: list[tuple[str, str]],
     trials_per_pair: int,
+    launch_variables: dict[str, str] | None = None,
 ) -> list[TrialSpec]:
     specs: list[TrialSpec] = []
     for agent_id, task_id in selection:
@@ -114,9 +115,23 @@ def _build_trial_specs(
             raise KeyError(f"task {task_id!r} not found; available: {sorted(tasks)}")
         for n in range(1, trials_per_pair + 1):
             specs.append(
-                TrialSpec(agent=agents[agent_id], task=tasks[task_id], trial_number=n)
+                TrialSpec(
+                    agent=agents[agent_id],
+                    task=tasks[task_id],
+                    trial_number=n,
+                    # Per-trial copy of the run-level dict so a caller can later
+                    # mutate one trial without affecting the others.
+                    launch_variables=(
+                        dict(launch_variables) if launch_variables else None
+                    ),
+                )
             )
     return specs
+
+
+def _is_secret_key(name: str) -> bool:
+    upper = name.upper()
+    return any(token in upper for token in ("TOKEN", "KEY", "SECRET", "PASSWORD"))
 
 
 async def run(
@@ -129,6 +144,7 @@ async def run(
     max_parallel: int = 2,
     show_progress: bool = True,
     run_id: str | None = None,
+    launch_variables: dict[str, str] | None = None,
 ) -> RunResult:
     """Run a batch of evaluation trials end to end.
 
@@ -141,6 +157,10 @@ async def run(
         max_parallel: Concurrent trial cap.
         show_progress: Emit the high-level per-trial event log to stdout.
         run_id: Optional override for the run id (default: timestamp + uuid).
+        launch_variables: Mapping of `KEY=value` pairs threaded to every
+            trial as `amplifier-digital-twin launch --var KEY=value`. The
+            DTU CLI substitutes ${KEY} in the profile, most commonly inside
+            `url_rewrites:` blocks pointing at a local Gitea mirror.
     """
     if not cli_available():
         raise RuntimeError(
@@ -149,7 +169,9 @@ async def run(
 
     agents = loaders.discover_agents(agents_dir)
     tasks = loaders.discover_tasks(tasks_dir)
-    specs = _build_trial_specs(agents, tasks, selection, trials_per_pair)
+    specs = _build_trial_specs(
+        agents, tasks, selection, trials_per_pair, launch_variables=launch_variables
+    )
 
     if run_id is None:
         run_id = (
@@ -163,6 +185,12 @@ async def run(
     started_at = datetime.now(timezone.utc).isoformat()
 
     # Persist the run plan up front so observers can correlate trial dirs.
+    # Launch variables are recorded for debuggability; values are redacted
+    # when the key name looks like a secret (token/key/secret/password).
+    launch_var_record: dict[str, str] = {}
+    if launch_variables:
+        for k, v in launch_variables.items():
+            launch_var_record[k] = "<redacted>" if _is_secret_key(k) else v
     (out / "run.json").write_text(
         json.dumps(
             {
@@ -174,6 +202,7 @@ async def run(
                 "max_parallel": max_parallel,
                 "trials_per_pair": trials_per_pair,
                 "selection": [{"agent": a, "task": t} for a, t in selection],
+                "launch_variables": launch_var_record,
                 "trials": [s.trial_id for s in specs],
             },
             indent=2,
@@ -249,6 +278,18 @@ def _parse_pair(value: str) -> tuple[str, str]:
     return agent.strip(), task.strip()
 
 
+def _parse_launch_var(value: str) -> tuple[str, str]:
+    if "=" not in value:
+        raise argparse.ArgumentTypeError(
+            f"--launch-var must be KEY=VALUE, got {value!r}"
+        )
+    key, _, val = value.partition("=")
+    key = key.strip()
+    if not key:
+        raise argparse.ArgumentTypeError(f"--launch-var KEY cannot be empty: {value!r}")
+    return key, val
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="amplifier-evaluation-harness",
@@ -266,6 +307,17 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--output", required=True, help="Output directory for results")
     p.add_argument("--max-parallel", type=int, default=2)
     p.add_argument("--trials-per-pair", type=int, default=1)
+    p.add_argument(
+        "--launch-var",
+        action="append",
+        type=_parse_launch_var,
+        default=[],
+        help=(
+            "KEY=VALUE pair forwarded to `amplifier-digital-twin launch --var KEY=VALUE`"
+            " for every trial. Repeatable. Used to inject e.g. Gitea URL/token for"
+            " profile url_rewrites substitution."
+        ),
+    )
     p.add_argument(
         "--quiet",
         action="store_true",
@@ -286,6 +338,10 @@ def main(argv: list[str] | None = None) -> int:
         console_level="INFO" if args.verbose else "WARNING",
     )
 
+    launch_vars: dict[str, str] = {}
+    for key, val in args.launch_var:
+        launch_vars[key] = val
+
     result = asyncio.run(
         run(
             agents_dir=args.agents,
@@ -295,6 +351,7 @@ def main(argv: list[str] | None = None) -> int:
             trials_per_pair=args.trials_per_pair,
             max_parallel=args.max_parallel,
             show_progress=not args.quiet,
+            launch_variables=launch_vars or None,
         )
     )
 

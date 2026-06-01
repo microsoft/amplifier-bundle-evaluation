@@ -1,0 +1,18 @@
+# Paths inside the DTU containing agent artifacts to extract after a run.
+#
+# {session_id} is substituted at extraction time with the value captured
+# from the agent's stdout JSON.
+#
+# Amplifier sessions are partitioned by a slug of the working directory:
+# /workspace -> -workspace (the AIUser exec's the agent from /workspace
+# by default).
+
+session_data:
+  base_path: /root/.amplifier/projects/-workspace/sessions/{session_id}
+  files:
+    - transcript.jsonl
+    - metadata.json
+    - events.jsonl
+
+workspace:
+  path: /workspace

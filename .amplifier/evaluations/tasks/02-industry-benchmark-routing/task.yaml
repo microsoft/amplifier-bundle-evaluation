@@ -1,0 +1,2 @@
+instructions: |
+  /evaluation I am testing changes to Amplifier CLI where I am setting the default model from Opus 4.8 to gpt-5.5. How could I validate these changes? Don't actually do anything just give me the plan

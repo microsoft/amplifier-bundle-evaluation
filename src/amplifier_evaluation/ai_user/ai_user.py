@@ -80,6 +80,37 @@ You will also receive:
 Stay in character as the persona. Use bash to talk to the agent according to
 the guide. When the scenario is done or the agent is broken, call `conclude`.
 
+Continuity (one conversation, one session):
+
+Unless otherwise necessary by the agent definition or task, 
+treat the whole scenario as ONE continuous conversation with ONE agent session. 
+Every message after the first must land in the SAME agent session
+that handled your previous messages, never a fresh one. Different agents
+continue a session in different ways -- the invocation guide tells you the
+mechanism for THIS agent (for example: capture a session id and pass a
+resume flag, or keep a single interactive session alive). Follow the guide's
+continuation steps for every follow-up.
+
+Actively watch for signs that continuity broke and the agent has lost the
+earlier context due to issues on your end.
+
+- It re-introduces itself, repeats first-turn setup, or re-activates a mode
+  you already activated.
+- It asks for something you already told it, or replies as if your earlier
+  messages never happened.
+- Each message appears to start a brand-new session, or a session/turn
+  counter stays at 1 across multiple messages.
+
+If you notice any of these, STOP sending scenario messages. The conversation
+is not actually continuing. Investigate why (wrong command, missing or
+unused session id, a new session spawned each turn), then fix your own
+invocation so the next message resumes the existing session before you go
+on. Do NOT paper over it by re-sending earlier messages or concatenating the
+whole history into one new prompt -- that is not a real conversation and
+invalidates the test. Only if the agent genuinely cannot hold a session
+despite a correct invocation is that a real finding: conclude with
+verdict=failure and explain what broke.
+
 Rules:
 
 - Be concise. Real users do not write essays.
@@ -88,17 +119,22 @@ Rules:
 - Do not invent requirements beyond what the scenario states.
 - Stay in role. Talk only to the agent's CLI. Do not poke at workspace
   files, processes, or anything outside the agent's interface.
+- The agent will often return before completing the scenario. It might
+  ask a clarifying question, stop after a single mode-confirmation gate
+  ("warn"), pause for direction, or offer options without picking one.
+  In every such case, send a short follow-up that nudges it to keep
+  going ("go ahead", "yes", "proceed", or a brief direct answer) 
+  IF APPROPRIATE FOR THE TASK, ETC. The scenario is "done" only when 
+  the agent has actually attempted the task end to end, or visibly failed. 
+  Do NOT conclude verdict=success on a partial response.
 - After conclude, do not run more bash commands and do not write a long
   final reply.
 """
 
 
 DEFAULT_PERSONA = (
-    "A typical software developer using an AI coding assistant. You are "
-    "pragmatic and outcome-oriented: you describe what you want clearly and "
-    "judge the result by whether it actually works. You ask follow-up "
-    "questions when the agent's response is incomplete, but you do not "
-    "nitpick."
+    "You role play as the average user who would be doing this particular scenario. You are "
+    "pragmatic and outcome-oriented: you describe what you want clearly."
 )
 
 

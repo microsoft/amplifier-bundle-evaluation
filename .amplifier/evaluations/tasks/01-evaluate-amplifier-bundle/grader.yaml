@@ -1,0 +1,92 @@
+# Grader for the "validate this bundle for me" meta-eval (v2).
+#
+# Three substantive checks on what the /evaluation mode actually produced
+# for the inner bundle. Basic liveness signals from v1 (reached eval mode,
+# session completed, "wrote some file") are intentionally dropped: they fail
+# any broken run and tell us nothing about evaluation quality.
+#
+#   1. created-dtu-profile      -- produced at least one real DTU profile
+#   2. created-evaluation-task  -- defined at least one evaluation task/scenario
+#   3. created-run-script       -- produced a script that runs the evaluation
+#
+# All inspection happens inside the DTU. The agent was told to put every
+# file it produces under /workspace/eval-output/. Weights sum to 1.0 so the
+# overall score stays on a 0-1 scale.
+
+evaluations:
+  - name: created-dtu-profile
+    weight: 0.34
+    steps: |
+      Decide whether the agent produced at least one real Digital Twin
+      Universe (DTU) profile under /workspace/eval-output/.
+
+      1. Recursively list /workspace/eval-output/ and read every YAML file
+         (*.yaml / *.yml).
+      2. A DTU profile is a YAML that declares an isolated environment. It
+         is recognizable by DTU-profile structure, for example:
+           - a top-level `base:` with an `image:` (e.g. ubuntu:24.04), and/or
+           - a `provision:` block with `setup_cmds:`, and/or
+           - `readiness:`, `url_rewrites:`, `passthrough:`, or `access:` keys.
+         A generic config or grader YAML with none of this environment
+         structure does NOT count.
+      3. Score `yes` if at least one YAML under eval-output is clearly a DTU
+         profile (an environment definition), otherwise `no`. Two profiles
+         (e.g. a before/after pair) still count as a single `yes`.
+    rubric:
+      created_dtu_profile:
+        points: 1
+        description: >
+          Did the agent produce at least one real DTU profile (a YAML that
+          defines an isolated environment: base image plus provisioning),
+          not just an arbitrary YAML config?
+
+  - name: created-evaluation-task
+    weight: 0.33
+    steps: |
+      Decide whether the agent defined at least one concrete evaluation
+      task (a test scenario) for the inner bundle.
+
+      1. Recursively inspect /workspace/eval-output/ (scenario writeups,
+         task definitions, markdown, YAML, etc.). Read file contents.
+      2. An evaluation task is a concrete, self-contained test case that
+         specifies BOTH:
+           - an input or action that exercises the bundle (a prompt the
+             agent-under-test would receive, a command, or a scenario), and
+           - a success criterion / expected behavior / what to measure.
+         A vague aspiration ("we could test the reminder hook") with no
+         concrete input and no measurable criterion does NOT count.
+      3. Score `yes` if at least one such concrete evaluation task is
+         defined, otherwise `no`.
+    rubric:
+      created_evaluation_task:
+        points: 1
+        description: >
+          Did the agent define at least one concrete evaluation task -- a
+          test scenario with a specific input AND a measurable success
+          criterion for the inner bundle?
+
+  - name: created-run-script
+    weight: 0.33
+    steps: |
+      Decide whether the agent produced a script that actually RUNS the
+      evaluation (orchestrates execution and collects results), not merely
+      a one-off helper snippet.
+
+      1. Recursively inspect /workspace/eval-output/ for scripts (*.sh,
+         *.py, or other executables). Read their contents to judge intent,
+         not just the filename.
+      2. A run script is one whose purpose is to EXECUTE the evaluation end
+         to end: it launches or exercises the scenario(s) (for example,
+         invokes a DTU, runs the bundle against the test input) and/or
+         collects the results or metrics.
+      3. A standalone helper with no run/orchestration logic does NOT count
+         on its own. A `run.sh` (or a Python runner) that drives the
+         evaluation DOES count.
+      4. Score `yes` if at least one such run script exists, otherwise `no`.
+    rubric:
+      created_run_script:
+        points: 1
+        description: >
+          Did the agent produce a script (e.g. run.sh or a Python runner)
+          that actually executes the evaluation end to end, rather than a
+          standalone helper snippet?

@@ -1,0 +1,14 @@
+name: 02-industry-benchmark-routing
+description: >
+  Does the /evaluation mode correctly route a broad model-swap validation
+  question ("how do I validate changing the default model?") to the
+  amplifier-benchmark suite (starting with ~5 tasks) rather than suggesting
+  custom one-off tasks?
+difficulty: easy
+categories:
+  - meta-eval
+  - bundle-evaluation
+  - routing
+# Single-turn solver session followed by one in-DTU grader. 20 minutes covers
+# bundle composition + first-token latency + solver response + grading.
+timeout: 1200

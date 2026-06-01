@@ -1,0 +1,185 @@
+#!/usr/bin/env bash
+# .amplifier/evaluations/run.sh
+#
+# Wrapper that runs the bundle's meta-evaluations via the amplifier_evaluation
+# harness. Discovers a running amplifier-gitea instance, deploys the local
+# branch HEAD into the mirror AS the `main` branch (simulating the changes
+# being merged and active), and threads GITEA_URL / GITEA_TOKEN /
+# EVAL_BUNDLE_REF to every trial via the harness `--launch-var` flag.
+#
+# Why deploy as `main`: at session start Amplifier re-composes its app bundles
+# by cloning the bundle's DEFAULT branch (`main`). If the mirror only carries a
+# feature branch, that clone fails ("Remote branch main not found"), the
+# evaluation bundle drops out of composition, and `/evaluation` mode silently
+# disappears. Publishing the local HEAD as `main` makes the agent under test
+# behave exactly as if these changes were already deployed.
+#
+# Usage:
+#   ./run.sh                # both evals (01 + 02)
+#   ./run.sh 02             # just one eval by id prefix
+#   ./run.sh 01 02          # explicit list
+#
+# Environment overrides:
+#   EVAL_BUNDLE_REF   LOCAL git ref whose HEAD to deploy (default: the
+#                     currently checked-out branch). Its HEAD is published
+#                     into the Gitea mirror AS `main`, so the agent under
+#                     test composes it exactly as a deployed/active bundle.
+#   AMPLIFIER_GITEA_ID
+#                     pick a specific gitea instance instead of the first
+#   ANTHROPIC_API_KEY required; falls back to ~/.amplifier/keys.env
+#   MAX_PARALLEL      passed to the harness; default 1 (these evals are
+#                     resource-heavy and should not run concurrently)
+#   TRIALS_PER_PAIR   default 1
+#
+# Prerequisites:
+#   amplifier-digital-twin, amplifier-gitea, git, python3, docker on PATH
+#   Docker daemon running
+#   amplifier_evaluation package installed in the active Python env (use the
+#   bundle's .venv or `uv pip install -e .` against the bundle root)
+
+set -euo pipefail
+
+HERE="$(cd "$(dirname "$0")" && pwd)"
+BUNDLE_ROOT="$(cd "$HERE/../.." && pwd)"
+RESULTS_ROOT="$HERE/results"
+
+# Local ref whose HEAD gets deployed into the mirror as `main`. Defaults to the
+# branch currently checked out in the bundle repo.
+EVAL_BUNDLE_REF="${EVAL_BUNDLE_REF:-$(cd "$BUNDLE_ROOT" && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)}"
+# The branch the agent under test composes from. Always `main` so the bundle
+# resolves like a deployed/active default branch.
+DEPLOY_BRANCH="main"
+MAX_PARALLEL="${MAX_PARALLEL:-1}"
+TRIALS_PER_PAIR="${TRIALS_PER_PAIR:-1}"
+REPO_NAME="amplifier-bundle-evaluation"
+
+log() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*" >&2; }
+die() { log "ERROR: $*"; exit 1; }
+
+# ---- 0. preflight --------------------------------------------------------
+log "preflight checks"
+command -v amplifier-digital-twin >/dev/null || die "amplifier-digital-twin not on PATH"
+command -v amplifier-gitea >/dev/null || die "amplifier-gitea not on PATH"
+command -v git >/dev/null || die "git not on PATH"
+command -v python3 >/dev/null || die "python3 not on PATH"
+command -v docker >/dev/null || die "docker not on PATH"
+docker info >/dev/null 2>&1 || die "Docker is not running"
+
+python3 -c "import amplifier_evaluation" 2>/dev/null \
+    || die "amplifier_evaluation not importable; activate the bundle .venv or 'uv pip install -e .' in $BUNDLE_ROOT"
+
+if [ -z "${ANTHROPIC_API_KEY:-}" ] && [ -f "$HOME/.amplifier/keys.env" ]; then
+    set -a; . "$HOME/.amplifier/keys.env"; set +a
+fi
+[ -n "${ANTHROPIC_API_KEY:-}" ] || die "ANTHROPIC_API_KEY not set and not in ~/.amplifier/keys.env"
+
+# ---- 1. selection --------------------------------------------------------
+ALL_TASKS=("01-evaluate-amplifier-bundle" "02-industry-benchmark-routing")
+SELECTED=()
+if [ "$#" -eq 0 ]; then
+    SELECTED=("${ALL_TASKS[@]}")
+else
+    for arg in "$@"; do
+        case "$arg" in
+            -h|--help)
+                sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'
+                exit 0 ;;
+        esac
+        match=""
+        for t in "${ALL_TASKS[@]}"; do
+            if [[ "$t" == "$arg" || "$t" == "$arg-"* ]]; then
+                match="$t"; break
+            fi
+        done
+        [ -n "$match" ] || die "unknown task '$arg' (known: ${ALL_TASKS[*]})"
+        SELECTED+=("$match")
+    done
+fi
+
+# Both evals exercise the same agent: amplifier with amplifier-foundation
+# and amplifier-bundle-evaluation composed. The agent under test is the
+# bundle's /evaluation mode in both cases; the harness, scoring, and
+# fixtures differ per task.
+AGENT_ID="amplifier-evalbundle"
+
+log "selection: ${SELECTED[*]}"
+
+# ---- 2. gitea: discover and start ---------------------------------------
+log "discovering gitea instance"
+GITEA_ID="${AMPLIFIER_GITEA_ID:-}"
+if [ -z "$GITEA_ID" ]; then
+    GITEA_ID="$(amplifier-gitea list | python3 -c \
+        'import json,sys; d=json.load(sys.stdin); print(d[0]["id"] if d else "")')"
+fi
+[ -n "$GITEA_ID" ] || die "no amplifier-gitea instance found. Create one with 'amplifier-gitea create --port 10110'."
+
+STATUS_JSON="$(amplifier-gitea status "$GITEA_ID")"
+RUNNING="$(echo "$STATUS_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["container_running"])')"
+if [ "$RUNNING" != "True" ]; then
+    log "starting stopped gitea container amplifier-gitea-$GITEA_ID"
+    docker start "amplifier-gitea-$GITEA_ID" >/dev/null
+    sleep 3
+fi
+GITEA_PORT="$(echo "$STATUS_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["port"])')"
+GITEA_TOKEN="$(amplifier-gitea token "$GITEA_ID" | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')"
+GITEA_URL="http://localhost:$GITEA_PORT"
+log "gitea: $GITEA_URL  id=$GITEA_ID"
+
+# ---- 3. ensure repo exists in gitea, force-push current ref -------------
+EXISTS="$(curl -sS -H "Authorization: token $GITEA_TOKEN" \
+    "$GITEA_URL/api/v1/repos/admin/$REPO_NAME" -o /dev/null -w '%{http_code}')"
+if [ "$EXISTS" != "200" ]; then
+    log "creating admin/$REPO_NAME on gitea"
+    curl -sS -X POST "$GITEA_URL/api/v1/admin/users/admin/repos" \
+        -H "Authorization: token $GITEA_TOKEN" -H "Content-Type: application/json" \
+        -d "{\"name\":\"$REPO_NAME\",\"default_branch\":\"main\",\"auto_init\":false}" \
+        -o /dev/null
+fi
+
+log "deploying local '$EVAL_BUNDLE_REF' into gitea as '$DEPLOY_BRANCH' (simulating deployed/active)"
+(
+    cd "$BUNDLE_ROOT"
+    git rev-parse "$EVAL_BUNDLE_REF" >/dev/null \
+        || die "ref '$EVAL_BUNDLE_REF' not found in $BUNDLE_ROOT"
+    git -c credential.helper= push --force \
+        "http://admin:$GITEA_TOKEN@localhost:$GITEA_PORT/admin/$REPO_NAME.git" \
+        "$EVAL_BUNDLE_REF:refs/heads/$DEPLOY_BRANCH" >/dev/null 2>&1
+)
+
+EVAL_SHA="$(cd "$BUNDLE_ROOT" && git rev-parse "$EVAL_BUNDLE_REF")"
+log "deployed $EVAL_BUNDLE_REF ($EVAL_SHA) as gitea/$DEPLOY_BRANCH"
+
+# ---- 4. run the harness -------------------------------------------------
+RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$(head -c 4 /dev/urandom | xxd -p)"
+OUTPUT_DIR="$RESULTS_ROOT/$RUN_ID"
+mkdir -p "$OUTPUT_DIR"
+
+# Build the --pair flags from the selection.
+PAIR_FLAGS=()
+for t in "${SELECTED[@]}"; do
+    PAIR_FLAGS+=("--pair" "$AGENT_ID:$t")
+done
+
+log "running harness, output=$OUTPUT_DIR"
+log "selection: $(printf '%s ' "${PAIR_FLAGS[@]}")"
+
+python3 -m amplifier_evaluation.harness.run \
+    --agents "$HERE/agents" \
+    --tasks  "$HERE/tasks" \
+    --output "$OUTPUT_DIR" \
+    --max-parallel "$MAX_PARALLEL" \
+    --trials-per-pair "$TRIALS_PER_PAIR" \
+    "${PAIR_FLAGS[@]}" \
+    --launch-var "GITEA_URL=$GITEA_URL" \
+    --launch-var "GITEA_TOKEN=$GITEA_TOKEN" \
+    --launch-var "EVAL_BUNDLE_REF=$DEPLOY_BRANCH" \
+    --verbose
+HARNESS_EXIT=$?
+
+log "harness exit: $HARNESS_EXIT"
+log "results: $OUTPUT_DIR"
+log "  - run.json     -- run plan + launch_variables (secrets redacted)"
+log "  - summary.json -- per-trial state, score, elapsed_s"
+log "  - trials/      -- per-trial state.json, install.log, ai_user.json, grader/, extraction/"
+
+exit "$HARNESS_EXIT"
