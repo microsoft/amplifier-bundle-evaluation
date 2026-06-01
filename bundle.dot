@@ -1,0 +1,53 @@
+// This repository provides the "evaluation" bundle: a small, reusable add-on that
+// gives an Amplifier assistant the ability to assess and score work against criteria.
+// It contains one capability package (a "behavior") that the bundle turns on.
+digraph evaluation {
+    rankdir=LR
+    fontname="Helvetica"
+    fontsize=12
+    label="Evaluation Bundle — adds work-assessment skills to an assistant\nevaluation v0.1.0 — bundle repo"
+    labelloc=t
+    labeljust=c
+    nodesep=0.6
+    ranksep=0.7
+    bgcolor="white"
+    source_hash="e0c8852f640e3b06f56fb292d8bc9e85a2d75d347e7e1a16b23f8c87a422a468"
+
+    node [fontname="Helvetica", fontsize=11, style="filled,rounded"]
+    edge [fontname="Helvetica", fontsize=9]
+
+    root_evaluation [label="Evaluation Bundle (the package)\nevaluation v0.1.0\n0 tools · 0 agents\n~45 tok aggregate", shape=box, fillcolor="#80cbc4", style="filled,rounded,bold", penwidth=2]
+
+    subgraph cluster_behaviors {
+        label="Capability Packages (turned on by this bundle)"
+        style="filled"
+        fillcolor="#f9f9f9"
+        color="#999999"
+
+        beh_evaluation_behavior [label="Work-Assessment Capability\nevaluation-behavior\n~142 tok", shape=box, fillcolor="#e0f2f1", style="filled,rounded"]
+    }
+
+    subgraph cluster_legend {
+        label="Legend — what each color means"
+        style="filled"
+        fillcolor="white"
+        color="#cccccc"
+        fontsize=9
+
+        leg_root [label="root bundle (the package)", shape=box, fillcolor="#80cbc4", style="filled,rounded,bold", fontsize=9]
+        leg_behavior [label="behavior (capability package)", shape=box, fillcolor="#e0f2f1", style="filled,rounded", fontsize=9]
+        leg_agent [label="agent (specialist helper)", shape=box, fillcolor="#c8e6c9", style="filled,rounded", fontsize=9]
+        leg_module [label="module (code add-on)", shape=box, fillcolor="#bbdefb", style="filled,rounded", fontsize=9]
+        leg_provider [label="provider (AI model source)", shape=box, fillcolor="#e0e0e0", style="filled,rounded", fontsize=9]
+        leg_context [label="context (reference notes)", shape=box, fillcolor="#e1bee7", style="filled,rounded", fontsize=9]
+        leg_standalone [label="standalone (ready-to-run bundle)", shape=box, fillcolor="#80cbc4", style="filled,rounded", fontsize=9]
+        leg_experiment [label="experiment (in-progress)", shape=box, fillcolor="#e1bee7", style="filled,rounded", fontsize=9]
+        leg_ext_cost [label="external (extra hidden cost)", shape=box, fillcolor="#80cbc4", style="dashed", color="red", penwidth=2, fontsize=9]
+        leg_ext_muted [label="external (no extra cost)", shape=box, fillcolor="#f5f5f5", style="dashed", fontsize=9]
+    }
+
+    disclaimer [label="Token estimates: ~4 chars/token\nSolid border = local (counted)\nDashed + red = external, hidden cost (not counted)\nDashed + muted = external, no cost\nExcludes: sub-session costs, runtime-dynamic", shape=note, fillcolor="#eceff1", style="filled", fontsize=9]
+
+
+    root_evaluation -> beh_evaluation_behavior [label="turns on"]
+}
