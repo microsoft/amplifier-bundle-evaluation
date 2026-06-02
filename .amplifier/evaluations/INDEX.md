@@ -24,7 +24,7 @@ User-facing templates live in `examples/`; agent task benchmarks live in
 
 | Id | What it checks |
 |---|---|
-| 01-evaluate-amplifier-bundle | `/evaluation` mode scaffolds a usable harness when handed a new bundle |
+| 01-evaluate-amplifier-bundle | `/evaluation` mode scaffolds a usable harness when handed a new Amplifier bundle |
 | 02-industry-benchmark-routing | `/evaluation` mode routes a broad model-swap validation question to the amplifier-benchmark suite (starting with ~5 tasks) instead of suggesting custom one-off tasks |
 
 Both evals exercise the same agent: an amplifier session with

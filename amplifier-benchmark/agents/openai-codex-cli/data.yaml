@@ -1,0 +1,33 @@
+# Paths inside the DTU containing agent artifacts to extract after a run.
+#
+# {session_id} is substituted at extraction time with the value captured
+# per invocation.yaml. Codex prints it to stderr on each `codex exec`:
+#   session id: 019e88ac-9b9b-7353-a8b2-72d8dceee59c
+# The same id is embedded in the rollout filename.
+#
+# Codex writes one rollout file per `codex exec` invocation under a
+# date-partitioned tree:
+#   /root/.codex/sessions/{YYYY}/{MM}/{DD}/rollout-{ts}-{session_id}.jsonl
+# The {YYYY}/{MM}/{DD} dirs and the {ts} prefix are not known ahead of time,
+# so the rollout is matched by a recursive glob on {session_id}.
+
+session_data:
+  base_path: /root/.codex/sessions
+  glob:
+    # The full session transcript: a JSONL stream of record types
+    # session_meta, turn_context, response_item, event_msg.
+    #
+    # Token usage lives in an event_msg with payload.type == "token_count":
+    #   payload.info.total_token_usage.{input_tokens, cached_input_tokens,
+    #     output_tokens, reasoning_output_tokens, total_tokens}
+    #   payload.info.model_context_window
+    # Model name is in turn_context.payload.model (e.g. "gpt-5.5").
+    # Final answer + timing is in event_msg payload.type == "task_complete"
+    #   (last_agent_message, duration_ms, time_to_first_token_ms).
+    #
+    # NOTE: codex does NOT emit a dollar cost. Compute cost downstream from
+    # token counts plus model pricing.
+    - "**/rollout-*-{session_id}.jsonl"
+
+workspace:
+  path: /workspace
