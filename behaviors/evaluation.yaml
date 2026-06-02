@@ -2,12 +2,3 @@ bundle:
   name: evaluation-behavior
   version: 0.2.0
   description: Evaluation expert for the Amplifier ecosystem
-
-# Truly zero-cost: this behavior is the install anchor only.
-# Including it composes the parent bundle, which causes the
-# modes/ directory to be discovered by the modes hook.
-# The /mode evaluation mode is advertised: false — invoked
-# explicitly via `/mode evaluation "<their ask>"` or by the
-# LLM when the user describes evaluation work. Mode body
-# carries the full methodology; nothing is injected into
-# session context until the mode is activated.
