@@ -1,0 +1,13 @@
+name: hle
+description: >
+  A single pinned Humanity's Last Exam (HLE) question, answered off-the-shelf by
+  amplifier-foundation. Measures raw answer correctness against the dataset's
+  ground-truth answer, judged with HLE's published judge criteria. The question
+  (and image, if any) is staged into /workspace by the run.sh sampler before the
+  trial; the ground-truth answer is pushed only to the grader.
+difficulty: hard
+categories:
+  - benchmark
+  - hle
+  - capability
+timeout: 1800

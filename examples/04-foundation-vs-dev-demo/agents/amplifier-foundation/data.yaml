@@ -1,0 +1,29 @@
+# Extraction hint. The agent runs from /workspace, so its sessions live under
+# the `-workspace` project slug. Pull the full session tree so the run can be
+# inspected after the fact (the grader scores from the DTU directly; this is
+# for post-hoc analysis).
+session_data:
+  base_path: /root/.amplifier/projects/-workspace/sessions/{session_id}
+  files:
+    - transcript.jsonl
+    - metadata.json
+    - events.jsonl
+
+workspace:
+  path: /workspace
+  # This agent runs BOTH benchmark shapes; the deliverable depends on the task:
+  #   - HLE tasks: the single file answer.txt.
+  #   - SWE-bench tasks: the agent's CHANGES to /workspace/repo, NOT the repo.
+  # /workspace/repo (SWE-bench only) is a multi-hundred-MB git clone -- do NOT
+  # pull it recursively (an earlier run swept in 1.1 GB this way). For SWE-bench,
+  # capture the change set as a diff and pull the small staged task files:
+  #   amplifier-digital-twin exec <dtu_id> -- bash -c 'cd /workspace/repo && git add -N . && git diff'
+  # Save that diff under the output dir as workspace/model_patch.diff.
+  deliverables:
+    - answer.txt            # present on HLE tasks
+    - problem_statement.md  # present on SWE-bench tasks
+  capture_diff:
+    repo: /workspace/repo   # SWE-bench tasks only; absent on HLE tasks
+    save_as: model_patch.diff
+  do_not_pull:
+    - repo

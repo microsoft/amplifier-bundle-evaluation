@@ -1,0 +1,7 @@
+name: hle-3
+description: >
+  HLE benchmark task 3 of 3 (pinned question). Answered off-the-shelf; judged
+  against the dataset ground-truth answer with HLE's judge criteria.
+difficulty: hard
+categories: [benchmark, hle, capability]
+timeout: 1800

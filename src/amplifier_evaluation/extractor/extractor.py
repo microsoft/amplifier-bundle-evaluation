@@ -63,11 +63,18 @@ Digital Twin Universe container onto the host so it can be analyzed later.
    transcripts, events, and metadata files. Categorize these as
    `session_data`.
 
-Use the original task description to recognize the deliverables. The
-data.yaml you receive hints at where session logs and the agent's
-working directory typically live, but it can be wrong or outdated. Trust
-what is actually inside the DTU. If the data.yaml's paths don't exist,
-walk the directory tree.
+The data.yaml you receive describes where BOTH the session logs AND the
+deliverables live, and often names the exact deliverable files. Treat it
+as usually-correct guidance, not as unreliable. Work HINT-FIRST:
+
+1. Try the paths and files data.yaml names. Verify they exist with ONE
+   combined command (a single `find` / `ls`), not many small probes.
+2. Only if a hinted path is genuinely missing do you walk the directory
+   tree to locate it. Record anything that stays missing in `missing`.
+
+The hints are usually right, so aim to finish in as few tool calls as
+possible. Use the original task description to confirm what the
+deliverables should be.
 
 You have a `bash` tool. You will use two host-side commands:
 
@@ -91,8 +98,18 @@ RULES:
 - Do NOT use `exec + cat > local_file`. Use `file-pull`; it handles binary
   files, permissions, and large files correctly.
 - Never modify anything inside the DTU. You may read freely.
-- Search broadly for deliverables. Common locations: /root, /workspace,
-  /tmp, /home. Use `find` rather than recursive `ls`.
+- HINT-FIRST: pull exactly the files data.yaml names. Only if a hinted path
+  is missing do you search (`find`, not recursive `ls`) common locations
+  like /root, /workspace, /tmp, /home.
+- SIZE GUARD: before any `file-pull -r`, check the directory size with
+  `du -sh <dir>`. Never recursively pull a directory that contains a cloned
+  source repository, a virtualenv, or node_modules, or that exceeds ~50 MB.
+  Pull the specific deliverable files instead. If the deliverable is an
+  agent's changes to a git repo, do NOT pull the repo tree -- capture the
+  change set as a diff and save only that:
+      amplifier-digital-twin exec <dtu_id> -- bash -c 'cd <repo> && git add -N . && git diff' \\
+        > <output_dir>/workspace/model_patch.diff
+  Honor any `do_not_pull`, `deliverables`, or `capture_diff` hint in data.yaml.
 - If a hinted path in data.yaml genuinely does not exist after you've
   walked the tree, record it in the `missing` list and move on.
 - Auxiliary state the agent wrote (configs, rate-limit files, etc.) is
@@ -117,35 +134,42 @@ onto the host. The host output directory is:
 
 All host paths in your manifest must be absolute and live under that directory.
 
-You want to extract two things:
-
-1. The agent's DELIVERABLES for the task above. Use the task description
-   to figure out what kinds of files the agent should have produced (file
-   extensions, names, keywords). The deliverables may live anywhere; do
-   not assume they are in a directory called "workspace". Search common
-   locations like /root, /workspace, /tmp, /home, and the agent's actual
-   working directory. Use `find` rather than recursive `ls`. Categorize
-   these as `workspace`.
-
-2. The agent's SESSION LOGS. Here is the agent's data.yaml hinting at
-   where they typically live:
+Here is the agent's data.yaml. It describes where BOTH the deliverables
+and the session logs live, and often names the exact deliverable files
+and any directories you must NOT pull:
 
 ```yaml
 {data_yaml_text}
 ```
 
-   This is a HINT. If the paths in data.yaml do not exist, walk the
-   directory tree to find them. For Amplifier sessions the project slug
-   encodes the agent's CWD (e.g. `/workspace` -> `-workspace`,
-   `/root` -> `-root`); `ls /root/.amplifier/projects/` reveals the real
-   slug. Categorize these as `session_data`.
+You want to extract two things, working HINT-FIRST from the data.yaml:
+
+1. The agent's DELIVERABLES for the task above. The `workspace:` block in
+   data.yaml names where they live and usually lists the exact files (a
+   `deliverables:` list). Pull exactly those. Honor any `do_not_pull:` and
+   `capture_diff:` hints -- in particular, when the deliverable is the
+   agent's changes to a git repo, do NOT pull the repo tree; capture a
+   `git add -N . && git diff` and save only that. Use the task description
+   to confirm. Categorize these as `workspace`.
+
+2. The agent's SESSION LOGS. The `session_data:` block names where they
+   live. For Amplifier sessions the project slug encodes the agent's CWD
+   (e.g. `/workspace` -> `-workspace`, `/root` -> `-root`);
+   `ls /root/.amplifier/projects/` reveals the real slug. Categorize these
+   as `session_data`.
+
+Only walk the directory tree if a hinted path is actually missing. The
+hints are usually correct; aim to finish in as few tool calls as possible.
 
 Steps:
 
-1. Inspect the DTU. Find both the deliverables and the session logs.
+1. Verify the hinted paths exist with ONE combined command (a single
+   `find` / `ls`), not many small probes. Before any `file-pull -r`, run
+   `du -sh` and never recursively pull a cloned repo, virtualenv, or any
+   directory over ~50 MB.
 2. Pull every artifact with `amplifier-digital-twin file-pull` (use `-r`
-   for directories), placing them under sensible subdirectories of
-   `output_dir`.
+   only for small directories), placing them under sensible subdirectories
+   of `output_dir`.
 3. If you spot related state nearby (configs the agent wrote, agent logs
    outside the session dir, etc.) pull them under category `other` with a
    `note` explaining what they are.

@@ -1,0 +1,7 @@
+name: amplifier-dev
+description: >
+  Variant "amplifier-dev": the amplifier-dev bundle (amplifier-foundation @ main
+  plus the amplifier-dev behavior + amplifier-tester + bundle-design context),
+  installed from GitHub. The "with extra tooling" arm of the comparison. Pins the
+  same opus48 routing matrix as the foundation variant so the only difference is
+  the composed bundle, not the model.

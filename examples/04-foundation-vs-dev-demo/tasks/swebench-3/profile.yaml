@@ -1,0 +1,34 @@
+name: eval04-swebench-3
+description: >
+  Ubuntu 24.04 with uv + git. Clones the SWE-bench instance repo into
+  /workspace/repo at its buggy base commit, selected per run via the ${SWE_REPO_3}
+  and ${SWE_COMMIT_3} launch variables (set by run.sh from the sampled instance).
+  The problem statement is staged into /workspace by the harness seeding stage.
+  The agent installs foundation from GitHub @main (see the agent's install.yaml).
+
+base:
+  image: ubuntu:24.04
+
+passthrough:
+  allow_external: true
+  services:
+    - name: anthropic
+      key_env: ANTHROPIC_API_KEY
+
+provision:
+  setup_cmds:
+    - apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates tmux && rm -rf /var/lib/apt/lists/*
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - mkdir -p /workspace
+    # Clone the instance repo at its buggy base commit. ${SWE_REPO_3} / ${SWE_COMMIT_3}
+    # are substituted by the DTU CLI from run.sh's --launch-var flags.
+    - git clone ${SWE_REPO_3} /workspace/repo
+    - git -C /workspace/repo checkout ${SWE_COMMIT_3}
+
+readiness:
+  - name: uv-installed
+    command: "PATH=/root/.local/bin:$PATH uv --version"
+  - name: workspace-exists
+    command: "test -d /workspace && echo OK"
+  - name: repo-cloned
+    command: "test -d /workspace/repo/.git && echo OK"

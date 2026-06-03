@@ -1,0 +1,27 @@
+name: eval02-hle-foundation
+description: >
+  Ubuntu 24.04 with uv + git. The HLE question (question.md and an optional
+  question_image) is staged into /workspace by the harness seeding stage before
+  the agent runs. The agent installs foundation from GitHub @main (see the
+  agent's install.yaml) -- no Gitea, no url_rewrites.
+
+base:
+  image: ubuntu:24.04
+
+passthrough:
+  allow_external: true
+  services:
+    - name: anthropic
+      key_env: ANTHROPIC_API_KEY
+
+provision:
+  setup_cmds:
+    - apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates tmux && rm -rf /var/lib/apt/lists/*
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - mkdir -p /workspace
+
+readiness:
+  - name: uv-installed
+    command: "PATH=/root/.local/bin:$PATH uv --version"
+  - name: workspace-exists
+    command: "test -d /workspace && echo OK"

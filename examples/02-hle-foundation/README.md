@@ -1,60 +1,71 @@
-# Example 02: Amplifier Foundation on Humanity's Last Exam
+# Example 02: HLE on foundation (library format)
 
-A worked example measuring Amplifier foundation's correctness on a single, pinned question from [Humanity's Last Exam](https://huggingface.co/datasets/cais/hle) (HLE).
+Measures `amplifier-foundation`'s correctness on a single, pinned
+[Humanity's Last Exam](https://huggingface.co/datasets/cais/hle) (HLE) question.
+Built on the `amplifier_evaluation` library: an `agents/` + `tasks/` definition
+driven by the stock harness (`python -m amplifier_evaluation.harness.run`).
 
-Unlike example 01 (A/B before/after), this is a single-variant capability measurement. Extend to A/B by adding a second profile and a second variant arm to `run.sh`.
+Type: off-the-shelf benchmark, single-variant capability measurement.
 
-## Target of evaluation
+## What it measures
 
-`amplifier-foundation @ main` (off-the-shelf) running a single HLE question inside a Digital Twin Universe. `question.md` (and an optional `question_image.<ext>`) is staged in `/work/hle-task/`, the agent writes its final answer to `answer.txt`, and the result is judged in a separate Amplifier session on the host using HLE's published judge prompt.
+The agent (`amplifier-foundation`, installed from GitHub `@main`) answers the
+pinned HLE question in one non-interactive turn, writing `answer.txt`. The
+grader judges that answer against the dataset's ground-truth answer using HLE's
+published judge criteria. Score: 1.0 (correct) or 0.0 (incorrect).
 
-## Question selection
-
-Pinned by id in `hle/PINNED_SAMPLE_ID`. The first run picks one with seed=42 from the full HLE test set and writes that id to the pinned file; subsequent runs reuse it. Delete the file to re-sample. To restrict the pool to a specific `answer_type`, pass `--filter-answer-type` to `sample_hle.py`. The LLM judge handles every `answer_type` (exact, multiple-choice, numerical, free-form) semantically.
-
-## Setup
+## Layout
 
 ```
-Foundation:       git+https://github.com/microsoft/amplifier-foundation@main
-Sample source:    cais/hle parquet (gated; needs HF_TOKEN)
-Judge:            HLE's published judge prompt, run as a separate amplifier session on the host
-Sample count:     1
+02-hle-foundation/
+  run.sh                       wrapper: sample pinned question -> dispatch harness
+  agents/
+    amplifier-foundation/      the system under test (meta/install/invocation/data)
+  tasks/
+    hle/
+      meta.yaml                name, difficulty, categories, timeout
+      task.yaml                instructions (the solver prompt)
+      profile.yaml             DTU profile (ubuntu + uv + git)
+      grader.yaml              HLE LLM-judge rubric (one criterion)
+      workspace/               question.md (+ image) staged at runtime
+      grader-data/             reference.json (ground truth) staged at runtime
+  hle/
+    sample_hle.py              host sampler (downloads cais/hle, pins one question)
+    PINNED_SAMPLE_ID           the pinned question id
+  results/<run-id>/            harness output (summary.json, trials/, ...)
 ```
 
-Solver prompt: see `hle/prompts.py` — adapted from HLE's reference solo prompt, pointed at the staged file paths, with web search and out-of-dir exploration forbidden. Judge prompt: asks for `extracted_final_answer`, `reasoning`, `correct: yes|no`; regex-parsed into `verdict.json`.
+The ground-truth answer is staged only into `grader-data/` (pushed to the grader
+via `grader.yaml` `mounts:`), never into the solver's `workspace/`.
 
-## How to run
+## Prerequisites
+
+- `amplifier-digital-twin`, `uv`, `python3`, `docker` on PATH; Docker running
+- `ANTHROPIC_API_KEY` (env or `~/.amplifier/keys.env`)
+- `HF_TOKEN` (env or `~/.amplifier/keys.env`) -- cais/hle is gated
+- `amplifier_evaluation` importable (activate the bundle `.venv`)
+
+## Run
 
 ```
 ./run.sh
 ```
 
-Stands up the DTU, samples (or reuses the pin), runs the agent, pulls `answer.txt` and the session dir, judges on the host, writes `meta.json`.
+The pinned question id lives in `hle/PINNED_SAMPLE_ID`. Delete it to re-sample
+with the seed; otherwise subsequent runs reuse the same question.
 
-## How to read results
+### Benchmark data is fetched at runtime, never committed
 
-**Start here:** `verdict-correct.md` or `verdict-incorrect.md` at the run root — rendered human-readable summary (outcome, agent's final answer, ground truth, session sizes, timings). The filename itself signals the verdict.
+`run.sh` downloads the HLE question from HuggingFace at runtime (cached under
+`~/.cache/amplifier-eval-hle/`) and writes it into `tasks/hle/workspace/`
+(`question.md`, image) and `tasks/hle/grader-data/` (`reference.json`, the
+ground-truth answer). Those directories are gitignored except for their
+`.gitkeep`; only the task definitions, the sampler, and the pinned id are
+committed. cais/hle is a gated dataset, so set `HF_TOKEN` and never commit the
+populated contents.
 
-```
-results/<date>/run-1/
-  verdict-{correct|incorrect}.md             rendered summary — start here
-  meta.json                                  pinned id, SHAs, wall times, verdict summary
-  sample/{sample.json, question.md, question_image.*}
-  solver/{answer.txt, stdout.txt, sessions/sessions/<sid>/{events,transcript}.jsonl}
-  judge/{verdict.json, judge_prompt.txt, stdout.txt, sessions/sessions/<sid>/}
-```
+## Evaluating local foundation changes
 
-```
-python3 metrics/extract_metrics.py results/<date>/run-1/  # structured JSON
-python3 metrics/summarize_run.py   results/<date>/run-1/  # re-renders verdict-*.md
-```
-
-## Shortcuts taken (v1)
-
-- **No Gitea.** Foundation installed straight from GitHub @main. To evaluate local foundation changes, copy the Gitea mirror block from `01-explorer-removal/run.sh`.
-- **Text-only judge.** Images are pushed to the solver but not to the judge. Image-dependent verification is a v2 follow-up.
-- **Single sample (n=1).** No batching, no pass-rate. To extend, loop in `run.sh` and add an aggregator in `metrics/`.
-
-## Prerequisites
-
-`amplifier-digital-twin`, `amplifier`, `uv`, `git`, `docker` on PATH; Docker running; `ANTHROPIC_API_KEY` and `HF_TOKEN` in env or `~/.amplifier/keys.env`. The `cais/hle` dataset is gated: accept terms at https://huggingface.co/datasets/cais/hle and create a read token.
+This example installs foundation from GitHub `@main`. To test local changes,
+add a Gitea mirror + `url_rewrites` to `tasks/hle/profile.yaml` and thread
+`GITEA_URL` / `GITEA_TOKEN` launch variables, as in example 01-explorer-removal.

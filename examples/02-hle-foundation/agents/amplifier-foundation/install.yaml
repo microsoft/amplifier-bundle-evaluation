@@ -1,0 +1,28 @@
+requires:
+  env:
+    - ANTHROPIC_API_KEY
+
+# Runs inside the launched task DTU via `bash -lc`, after the profile's provision
+# stage (which installs uv + git). amplifier-foundation is added from its public
+# GitHub URL @main -- no Gitea, no url_rewrites (this example evaluates upstream
+# foundation as-is). To evaluate local changes, add a Gitea mirror + url_rewrites
+# to the task profile like example 01-explorer-removal.
+setup_cmds:
+  - export PATH="/root/.local/bin:$PATH"; uv tool install git+https://github.com/microsoft/amplifier
+
+  # Provider config. Unquoted EOF expands $ANTHROPIC_API_KEY (provided via the
+  # profile's passthrough.services) into the file at install time.
+  - |
+    mkdir -p /root/.amplifier
+    cat > /root/.amplifier/settings.yaml <<EOF
+    config:
+      providers:
+        - module: provider-anthropic
+          source: git+https://github.com/microsoft/amplifier-module-provider-anthropic@main
+          config:
+            api_key: $ANTHROPIC_API_KEY
+    EOF
+
+  - export PATH="/root/.local/bin:$PATH"; amplifier bundle add git+https://github.com/microsoft/amplifier-foundation@main --app
+  - export PATH="/root/.local/bin:$PATH"; amplifier --version
+  - export PATH="/root/.local/bin:$PATH"; amplifier bundle list | tee /tmp/bundle-list.txt

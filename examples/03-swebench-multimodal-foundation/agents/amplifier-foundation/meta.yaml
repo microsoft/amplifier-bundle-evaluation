@@ -1,0 +1,6 @@
+name: amplifier-foundation
+description: >
+  Amplifier CLI with amplifier-foundation composed, installed from GitHub @main.
+  This is the system under test: a stock, off-the-shelf foundation install that
+  answers a single benchmark task in one non-interactive turn. No Gitea mirror
+  and no url_rewrites -- foundation is pulled straight from its public GitHub URL.

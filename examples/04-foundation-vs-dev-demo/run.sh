@@ -1,166 +1,116 @@
 #!/usr/bin/env bash
-# Example 04: Foundation vs Amplifier Dev demo.
+# examples/04-foundation-vs-dev-demo/run.sh
 #
-# Runs 3 HLE tasks and 3 SWE-bench Multimodal tasks against TWO variants of
-# the amplifier bundle (foundation and amplifier-dev), for 12 total
-# (variant, benchmark, task) jobs. Jobs run in parallel, capped at
-# AMPLIFIER_DEMO_MAX_PARALLEL DTUs (default 5).
+# Foundation-vs-amplifier-dev demo, in the amplifier_evaluation library format.
+# 3 HLE tasks + 3 SWE-bench Multimodal tasks, each run against TWO agent variants
+# (amplifier-foundation and amplifier-dev) = 12 trials, dispatched through the
+# stock harness with a configurable parallelism cap.
 #
-# Idempotent. Re-running on the same day appends/overwrites the dated
-# results/<YYYY-MM-DD>/ tree.
-#
-# Prerequisites:
-#   - amplifier-digital-twin, amplifier, uv, git on PATH; Docker running
-#   - ANTHROPIC_API_KEY (env or ~/.amplifier/keys.env)
-#   - HF_TOKEN         (env or ~/.amplifier/keys.env) for the HLE sampler
+# This wrapper samples all 6 pinned tasks onto disk (the gated HLE data cannot be
+# committed; SWE repos are cloned per-task by the profile via launch variables),
+# then runs the harness over all 12 (agent, task) pairs.
 #
 # Usage:
 #   ./run.sh
 #
 # Environment overrides:
-#   AMPLIFIER_DEMO_MAX_PARALLEL=5        # max concurrent DTUs
-#   AMPLIFIER_DEMO_NUM_HLE=3             # number of HLE tasks
-#   AMPLIFIER_DEMO_NUM_SWE=3             # number of SWE-bench tasks
-#   AMPLIFIER_DEMO_SEED=42               # random seed for task selection
-#   AMPLIFIER_DEMO_SWE_DATASET=multimodal  # 'multimodal' (JS, image-heavy,
-#                                          # needs strong vision) or 'verified'
-#                                          # (Python, broader code-fix signal).
-#                                          # Default 'multimodal'.
+#   ANTHROPIC_API_KEY  required; falls back to ~/.amplifier/keys.env
+#   HF_TOKEN           required (cais/hle is gated); falls back to ~/.amplifier/keys.env
+#   MAX_PARALLEL       concurrent trials; default 3
+#
+# Prerequisites:
+#   amplifier-digital-twin, uv, python3, docker on PATH; Docker daemon running
+#   (used by both the DTUs and the swebench grader); amplifier_evaluation importable.
 
 set -euo pipefail
 
-EXAMPLE_DIR="$(cd "$(dirname "$0")" && pwd)"
-DATE="$(date +%Y-%m-%d)"
-RESULTS="$EXAMPLE_DIR/results/$DATE"
-LOGS_DIR="$RESULTS/_logs"
-SAMPLES_DIR="$RESULTS/_samples"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+BUNDLE_ROOT="$(cd "$HERE/../.." && pwd)"
+RESULTS_ROOT="$HERE/results"
+MAX_PARALLEL="${MAX_PARALLEL:-3}"
 
-MAX_PARALLEL="${AMPLIFIER_DEMO_MAX_PARALLEL:-5}"
-NUM_HLE="${AMPLIFIER_DEMO_NUM_HLE:-3}"
-NUM_SWE="${AMPLIFIER_DEMO_NUM_SWE:-3}"
-SEED="${AMPLIFIER_DEMO_SEED:-42}"
-SWE_DATASET="${AMPLIFIER_DEMO_SWE_DATASET:-multimodal}"
-case "$SWE_DATASET" in
-    multimodal|verified) ;;
-    *) echo "ERROR: AMPLIFIER_DEMO_SWE_DATASET must be 'multimodal' or 'verified', got '$SWE_DATASET'" >&2; exit 2 ;;
-esac
-# Per-dataset pin file so multimodal and verified runs don't clobber each other.
-if [ "$SWE_DATASET" = "verified" ]; then
-    SWE_PIN_FILE="$EXAMPLE_DIR/swebench/PINNED_INSTANCE_IDS_VERIFIED"
-else
-    SWE_PIN_FILE="$EXAMPLE_DIR/swebench/PINNED_INSTANCE_IDS"
-fi
-export AMPLIFIER_DEMO_SWE_DATASET="$SWE_DATASET"   # so worker can read it
-
-log() { printf '[%s] [run] %s\n' "$(date +%H:%M:%S)" "$*" >&2; }
+log() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*" >&2; }
 die() { log "ERROR: $*"; exit 1; }
 
 # ---- 0. preflight --------------------------------------------------------
 log "preflight checks"
 command -v amplifier-digital-twin >/dev/null || die "amplifier-digital-twin not on PATH"
-command -v amplifier >/dev/null || die "amplifier not on PATH"
 command -v uv >/dev/null || die "uv not on PATH"
-command -v git >/dev/null || die "git not on PATH"
+command -v python3 >/dev/null || die "python3 not on PATH"
+command -v docker >/dev/null || die "docker not on PATH"
 docker info >/dev/null 2>&1 || die "Docker is not running"
+python3 -c "import amplifier_evaluation" 2>/dev/null \
+    || die "amplifier_evaluation not importable; activate the bundle .venv or 'uv pip install -e .' in $BUNDLE_ROOT"
 
-if [ -z "${ANTHROPIC_API_KEY:-}" ] || [ -z "${HF_TOKEN:-}" ]; then
-    if [ -f "$HOME/.amplifier/keys.env" ]; then
-        set -a
-        # shellcheck disable=SC1091
-        . "$HOME/.amplifier/keys.env"
-        set +a
-    fi
-fi
-[ -n "${ANTHROPIC_API_KEY:-}" ] || die "ANTHROPIC_API_KEY not set"
-[ -n "${HF_TOKEN:-}" ] || die "HF_TOKEN not set (cais/hle is a gated dataset)"
+if [ -f "$HOME/.amplifier/keys.env" ]; then set -a; . "$HOME/.amplifier/keys.env"; set +a; fi
+[ -n "${ANTHROPIC_API_KEY:-}" ] || die "ANTHROPIC_API_KEY not set and not in ~/.amplifier/keys.env"
+[ -n "${HF_TOKEN:-}" ] || die "HF_TOKEN not set (cais/hle is gated); set it or add to ~/.amplifier/keys.env"
 
-mkdir -p "$LOGS_DIR" "$SAMPLES_DIR"
+mapfile -t HLE_IDS < <(grep -v '^[[:space:]]*$' "$HERE/hle/PINNED_SAMPLE_IDS")
+mapfile -t SWE_IDS < <(grep -v '^[[:space:]]*$' "$HERE/swebench/PINNED_INSTANCE_IDS")
+[ "${#HLE_IDS[@]}" -ge 3 ] || die "expected 3 ids in hle/PINNED_SAMPLE_IDS"
+[ "${#SWE_IDS[@]}" -ge 3 ] || die "expected 3 ids in swebench/PINNED_INSTANCE_IDS"
 
-log "config: max_parallel=$MAX_PARALLEL num_hle=$NUM_HLE num_swe=$NUM_SWE seed=$SEED swe_dataset=$SWE_DATASET"
-log "results dir: $RESULTS"
+LAUNCH_VARS=()
 
-# ---- 1. sample tasks once on the host -----------------------------------
-log "sampling $NUM_HLE HLE tasks (seed=$SEED)"
-uv run --quiet --with huggingface_hub --with pyarrow \
-    python3 "$EXAMPLE_DIR/hle/sample_hle.py" \
-        --output "$SAMPLES_DIR/hle" \
-        --num "$NUM_HLE" \
-        --pinned-file "$EXAMPLE_DIR/hle/PINNED_SAMPLE_IDS" \
-        --seed "$SEED"
+# ---- 1. sample the 3 HLE questions --------------------------------------
+for n in 1 2 3; do
+    id="${HLE_IDS[$((n-1))]}"
+    log "sampling HLE task $n: $id"
+    TMP="$(mktemp -d)"
+    uv run --quiet --with huggingface_hub --with pyarrow python3 "$HERE/hle/sample_hle.py" \
+        --output "$TMP" --sample-id "$id"
+    td="$HERE/tasks/hle-$n"
+    mkdir -p "$td/workspace" "$td/grader-data"
+    rm -f "$td/workspace/question.md" "$td"/workspace/question_image.*
+    cp "$TMP/question.md" "$td/workspace/question.md"
+    cp "$TMP"/question_image.* "$td/workspace/" 2>/dev/null || true
+    cp "$TMP/sample.json" "$td/grader-data/reference.json"
+    rm -rf "$TMP"
+done
 
-log "sampling $NUM_SWE SWE-bench $SWE_DATASET tasks (seed=$SEED)"
-uv run --quiet --with huggingface_hub --with pyarrow \
-    python3 "$EXAMPLE_DIR/swebench/sample_swebench.py" \
-        --output "$SAMPLES_DIR/swebench" \
-        --num "$NUM_SWE" \
-        --pinned-file "$SWE_PIN_FILE" \
-        --dataset "$SWE_DATASET" \
-        --seed "$SEED"
+# ---- 2. sample the 3 SWE-bench instances --------------------------------
+for n in 1 2 3; do
+    id="${SWE_IDS[$((n-1))]}"
+    log "sampling SWE-bench task $n: $id"
+    TMP="$(mktemp -d)"
+    uv run --quiet --with huggingface_hub --with pyarrow python3 "$HERE/swebench/sample_swebench.py" \
+        --output "$TMP" --instance-id "$id"
+    td="$HERE/tasks/swebench-$n"
+    mkdir -p "$td/workspace" "$td/grader-data"
+    cp "$TMP/problem_statement.md" "$td/workspace/problem_statement.md"
+    cp "$TMP/instance.json" "$td/grader-data/instance.json"
+    repo="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["repo"])' "$TMP/instance.json")"
+    commit="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["base_commit"])' "$TMP/instance.json")"
+    LAUNCH_VARS+=(--launch-var "SWE_REPO_$n=https://github.com/${repo}.git" --launch-var "SWE_COMMIT_$n=$commit")
+    rm -rf "$TMP"
+done
 
-# ---- 2. build the job list ---------------------------------------------
-JOBS_FILE="$LOGS_DIR/jobs.txt"
-> "$JOBS_FILE"
-for variant in foundation amplifier-dev; do
-    for benchmark in hle swebench; do
-        n=$NUM_HLE
-        [ "$benchmark" = "swebench" ] && n=$NUM_SWE
-        for idx in $(seq 1 "$n"); do
-            echo "$variant $benchmark $idx" >> "$JOBS_FILE"
-        done
+# ---- 3. build the 12 (agent, task) pairs --------------------------------
+PAIRS=()
+for agent in amplifier-foundation amplifier-dev; do
+    for task in hle-1 hle-2 hle-3 swebench-1 swebench-2 swebench-3; do
+        PAIRS+=(--pair "$agent:$task")
     done
 done
-TOTAL_JOBS="$(wc -l < "$JOBS_FILE")"
-log "queued $TOTAL_JOBS jobs"
 
-# ---- 3. parallel dispatch (background jobs, capped) --------------------
-RUN_START=$(date +%s)
+RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
+OUTPUT_DIR="$RESULTS_ROOT/$RUN_ID"
+mkdir -p "$OUTPUT_DIR"
 
-# Bash semaphore: block while running-job count is at the cap.
-sem() {
-    while [ "$(jobs -r | wc -l)" -ge "$MAX_PARALLEL" ]; do
-        wait -n 2>/dev/null || true
-    done
-}
+log "running harness over 12 pairs (max_parallel=$MAX_PARALLEL), output=$OUTPUT_DIR"
+cd "$HERE"
+python3 -m amplifier_evaluation.harness.run \
+    --agents "$HERE/agents" \
+    --tasks  "$HERE/tasks" \
+    "${PAIRS[@]}" \
+    --output "$OUTPUT_DIR" \
+    --max-parallel "$MAX_PARALLEL" \
+    --trials-per-pair 1 \
+    "${LAUNCH_VARS[@]}" \
+    --verbose
+HARNESS_EXIT=$?
 
-run_one() {
-    local v="$1" b="$2" i="$3"
-    local job_id="${v}-${b}-${i}"
-    local out="$LOGS_DIR/${job_id}.log"
-    local start_ts end_ts
-    start_ts=$(date +%s)
-    log "STARTED $job_id (log: ${out})"
-    # </dev/null is REQUIRED: without it the worker subprocess inherits
-    # the parent's stdin (which is JOBS_FILE) and amplifier-digital-twin
-    # tries to interpret "foundation hle 1" as YAML on Incus's stdin.
-    if bash "$EXAMPLE_DIR/scripts/run_one_job.sh" "$v" "$b" "$i" "$RESULTS" \
-            </dev/null >"$out" 2>&1; then
-        end_ts=$(date +%s)
-        log "FINISHED $job_id (wall=$((end_ts - start_ts))s)"
-    else
-        end_ts=$(date +%s)
-        log "FAILED   $job_id (wall=$((end_ts - start_ts))s, see ${out})"
-    fi
-}
-
-log "dispatching with max_parallel=$MAX_PARALLEL"
-while read -r variant benchmark idx; do
-    sem
-    run_one "$variant" "$benchmark" "$idx" &
-    # small stagger to avoid thundering Docker startup
-    sleep 1
-done < "$JOBS_FILE"
-
-log "all jobs dispatched, waiting for completion"
-wait
-RUN_END=$(date +%s)
-log "all jobs complete wall=$((RUN_END - RUN_START))s"
-
-# ---- 4. build HTML report ----------------------------------------------
-log "building HTML report"
-python3 "$EXAMPLE_DIR/metrics/build_html_report.py" "$RESULTS" \
-    --output "$RESULTS/report.html"
-
-log "done. results: $RESULTS/"
-log "  report.html:  $RESULTS/report.html"
-log "  per-job logs: $LOGS_DIR/"
-log "  per-run dirs: $RESULTS/{foundation,amplifier-dev}/{hle,swebench}/task-N/run-1/"
+log "harness exit: $HARNESS_EXIT"
+log "results: $OUTPUT_DIR (summary.json, trials/, dashboard)"
+exit "$HARNESS_EXIT"

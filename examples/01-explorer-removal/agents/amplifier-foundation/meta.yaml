@@ -1,0 +1,8 @@
+name: amplifier-foundation
+description: >
+  Amplifier CLI with amplifier-foundation composed. The thing under test is
+  foundation's delegation behavior on a real exploration task. The foundation
+  build (WITH vs WITHOUT the foundation:explorer agent) is not encoded here --
+  it is selected per trial by the harness, which redirects the foundation
+  clone to one of two Gitea mirror repos via the FOUNDATION_REPO launch
+  variable consumed by the task profile's url_rewrites.

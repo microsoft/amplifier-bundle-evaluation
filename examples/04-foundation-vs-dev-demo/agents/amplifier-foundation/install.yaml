@@ -1,0 +1,29 @@
+requires:
+  env:
+    - ANTHROPIC_API_KEY
+
+# Variant "foundation": stock amplifier-foundation @ main. Pins Opus via the
+# opus48 routing matrix (routes all model_role mappings to claude-opus-4-8) so
+# this variant and amplifier-dev differ only by composed bundle, not by model.
+# (The original demo pinned opus47; opus48 is the current matrix.)
+setup_cmds:
+  - export PATH="/root/.local/bin:$PATH"; uv tool install git+https://github.com/microsoft/amplifier
+  - |
+    mkdir -p /root/.amplifier
+    cat > /root/.amplifier/settings.yaml <<EOF
+    config:
+      providers:
+        - module: provider-anthropic
+          source: git+https://github.com/microsoft/amplifier-module-provider-anthropic@main
+          config:
+            api_key: $ANTHROPIC_API_KEY
+            default_model: claude-opus-4-8
+            enable_1m_context: 'true'
+            enable_prompt_caching: 'true'
+            priority: 1
+    routing:
+      matrix: opus48
+    EOF
+  - export PATH="/root/.local/bin:$PATH"; amplifier bundle add git+https://github.com/microsoft/amplifier-foundation@main --app
+  - export PATH="/root/.local/bin:$PATH"; amplifier --version
+  - export PATH="/root/.local/bin:$PATH"; amplifier bundle list | tee /tmp/bundle-list.txt
