@@ -14,38 +14,17 @@ The working assumption for every criterion you write:
 
 A criterion that only checks for that surface layer is dead weight. The rubric needs to push past it.
 
-## The Pattern
+## The shape of a rubric
 
-A rubric is a flat mapping of named criteria. Each criterion has:
+A rubric is a flat set of named criteria. Each criterion has:
 
-- A unique snake_case key
-- A point allocation (positive integer)
-- A specific, observable question about the output
+- a unique short name
+- a point value, which is its relative weight
+- an observable question about the output
 
-Points sum to 100. The score is the sum of points earned across criteria. There are no 1-to-5 levels. Discrimination comes from criteria phrasing and weight allocation.
+A judge scores each criterion by awarding points up to its maximum, and the rubric's score is the points awarded divided by the points possible. Discrimination comes entirely from which criteria you choose and how you weight them. The points need not sum to any particular total: a round total like 100 lets each criterion read as a percentage, but a single binary check can be one 1-point criterion.
 
-Reference shape from eval-recipes:
-
-```python
-RUBRIC_EDITABILITY = {
-    "uses_placeholders": (
-        "str - (35 points) CRITICAL: Does the PowerPoint use proper placeholders/text frames "
-        "instead of absolutely positioned text boxes? This is THE key requirement from the instructions."
-    ),
-    "slide_count_correct": "str - (10 points) Does the slide count match the markdown structure (--- separators)?",
-    "titles_correct": "str - (10 points) Are slide titles properly extracted from # headers?",
-    "actually_editable": (
-        "str - (10 points) Can text be easily moved and edited like a normal PowerPoint slide "
-        "by non-technical users?"
-    ),
-    "content_preserved": "str - (10 points) Are markdown bullets, formatting, and tables preserved in the output?",
-    "proper_layouts": "str - (15 points) Does the tool use slide layouts (title, content) appropriately?",
-    "file_opens": "str - (10 points) Does the generated .pptx open without errors?",
-    "score": "float - Score between 0 and 100. Sum the points earned from each criterion.",
-}
-```
-
-One CRITICAL criterion holds 35% of the score because it encodes the make-or-break requirement from the instructions. The trivial-but-required checks (file opens, slide count) hold 10 each. The rubric is opinionated about what matters.
+How a specific harness stores, runs, and aggregates rubrics is a separate concern. The methodology below is harness-agnostic; the amplifier-evaluation grader schema is worked through at the end of this document as one concrete home for a rubric.
 
 ## Your Process
 
@@ -75,30 +54,44 @@ Observable:
 
 If you cannot rephrase a criterion into something concrete and pointable, the criterion is asking for inference, not observation. Find the observable property behind the inference, or cut it.
 
+Push the phrasing all the way to mechanical wherever you can:
+
+- **For industry-benchmark-style tasks with an explicit known answer, score by a tolerance band, not by eyeball.** When the task has a single correct value to check against, give the judge the band that earns credit: "within 1% of 1,531,989.62", "0 to 5 character differences by edit distance", "tempo within 60 to 100 BPM". The judge compares against a rule instead of forming an opinion. This does not apply to open-ended tasks with no canonical answer.
+- **For capability criteria, demand evidence the behavior actually fired**, not that it was claimed: "verify real API calls were made, not just a prompt constructed"; "the dependency is both declared and imported." The strongest form is a differential check: two contrasting outputs must differ in the expected direction (a "boss battle" track outpaces a "melancholy" one), which proves the input actually controls the result.
+- **Name what NOT to penalize**, so acceptable variation does not quietly cost points: "wording need not match exactly", "a direct API call or an Agent SDK are both fine", "for a small model, generic-but-plausible output is acceptable; do not penalize inaccuracy."
+
 ### Step 3: Allocate points by discriminating power
 
-Distribute 100 points. The 2 or 3 criteria identified in Step 1 should hold at least 50 points combined. Trivial-but-required checks (file exists, script runs without crashing) get 5 to 10 points each. They earn their place by gating, not by separating quality.
+Points are relative weights; the score is the points awarded divided by the total available. A round total like 100 keeps each criterion readable as a percentage. The 2 or 3 criteria identified in Step 1 should hold at least half the total combined. Trivial-but-required checks (file exists, script runs without crashing) get a small slice each. They earn their place by gating, not by separating quality.
 
-Mark heavy-weighted criteria with `CRITICAL:` in the question text. That signals to the judge agent that this criterion encodes a make-or-break requirement and the rubric author wants partial credit treated strictly.
+Mark heavy-weighted criteria with `CRITICAL:` in the criterion text. That signals to the judge that this criterion encodes a make-or-break requirement and partial credit should be treated strictly.
 
-### Step 4: Split into multiple rubrics when phases differ
+Where a criterion allows partial credit, spell out how that partial credit is earned in its text so the judge does not invent its own scale: "full credit for 75%+ coverage, proportional below"; "25 points for gradient boosting, 5 for linear regression, 0 for no model." A negative-points criterion can cap a failure mode the task invites, such as penalizing output that over-extracts beyond a threshold.
 
-For tasks that require both static-artifact checks (the code is structured right, the prompts contain what they should) and dynamic-behavior checks (the script actually works end-to-end with real inputs), split into two rubrics with weighted aggregation.
+### Step 4: Pair the rubric with an evidence-gathering plan
+
+A criterion is only observable if the judge actually gathers the evidence for it. Every rubric needs a companion plan for what the judge does before scoring: which files to read, which commands to run, what to inspect. If a criterion asks "does the script run without errors on the test images," the plan must actually run it. Write the plan and the rubric together so every criterion maps to something the plan produces. A few tactics keep that plan mechanical:
+
+- **Gate execution-dependent criteria on failure.** State the conditions that force a zero: a missing or empty deliverable, a tool that errored, a run that blew its time budget ("if the script fails or times out after 15 minutes, score 0 for this pass"). Otherwise the judge awards sympathy points to work that never ran.
+- **Turn perception into a script the judge runs.** When a property is hard to judge by reading (audio, images, structural validity), stage a helper that emits machine-readable output and have the plan run it; the rubric keys off its fields. Say so plainly: "since you cannot listen to audio, use the analysis script as a proxy."
+- **Look up values that drift.** For answers that go stale (model names, prices), have the plan check a live source rather than hardcoding a list.
+
+When a criterion needs a reference the solver must not see (an answer key, expected output, a scoring helper), keep it out of the solver's environment and supply it only to the judge, scoped to it ("only evaluate whether these specific items were found; do not penalize for extras"). For tasks that emit facts, verify claims against a live source or an HTTP 200 and score fabrication down explicitly. How a harness wires the hidden reference up is harness-specific; the grader does it with `steps` and `mounts`, shown in the worked example.
+
+### Step 5: Split into multiple scored passes when phases differ
+
+For tasks that require both static-artifact checks (the code is structured right, the prompts contain what they should) and dynamic-behavior checks (the script actually works end-to-end with real inputs), use two separately-scored rubrics with weighted aggregation rather than one overloaded rubric.
 
 Typical shape:
 
-- **Implementation rubric**: structural checks. Easier for agents to pass.
-- **Functional run rubric**: end-to-end execution against real inputs. Where the real discrimination happens.
+- An **implementation** pass: structural checks. Easier for agents to pass.
+- A **functional run** pass: end-to-end execution against real inputs. Where the real discrimination happens.
 
-Weight the harder phase more:
-
-```python
-final_score = result_implementation.score * 0.40 + result_functional.score * 0.60
-```
+Weight the harder phase more (for example 0.4 and 0.6). Each pass is scored independently, then combined by relative weight.
 
 Do not split for the sake of splitting. A single rubric is correct for tasks without a functional run phase.
 
-### Step 5: Calibrate against two example outputs
+### Step 6: Calibrate against two example outputs
 
 Before locking the rubric:
 
@@ -119,87 +112,93 @@ If you do not have two example outputs, generate them: have an agent produce one
 
 4. **Phrase for the judge, not the author.** The judge agent reads the criterion and produces a string explanation followed by a point award. Write criteria that make the judge's job mechanical: the evidence for full points, partial points, or zero should be obvious from looking at the artifact.
 
-## Output Format
+## Worked example: the amplifier-evaluation grader
 
-A rubric is a flat mapping (Python dict or YAML) where each entry is a criterion. The final entry is always a `score` field instructing the judge to sum earned points.
+This is one concrete home for a rubric. The amplifier-evaluation library's grader reads a `grader.yaml` and parses it into one or more weighted evaluations (`grader/schema.py`). Each evaluation pairs a rubric with the `steps` the judge follows inside the Digital Twin Universe to gather evidence.
 
-### Python dict form (used by `semantic_test`)
+How the generic concepts above map onto this schema:
 
-```python
-RUBRIC = {
-    "<criterion_key>": "str - (<points> points) <Specific observable question with concrete details>",
-    # ... more criteria, all points summing to 100
-    "score": "float - Score between 0 and 100. Sum the points earned from each criterion.",
-}
-```
+- **Criteria** become a `rubric` mapping keyed by snake_case name. Each criterion has a positive-integer `points` and a `description` (the observable question). There is no `score` field and no `critical:` field: the grader computes the score, and the parser ignores any key other than `points` and `description`. Put `CRITICAL:` in the `description`.
+- **Points and weights** are scored by `grader/grader.py`: per evaluation, `score = points_awarded / total_points`; overall is the weighted average `sum(score * weight) / sum(weight)`, so weights are relative (`0.4`/`0.6` equals `2`/`3`).
+- **The evidence-gathering plan** is the `steps` field. The criterion keys and per-criterion max points are compiled into the `submit_rubric` tool's input schema (`grader/tools.py`), so the judge returns a `points_awarded` (clamped to `[0, points]`) and a `reasoning` string for every criterion.
+- **References hidden from the solver** are `mounts`: each copies `grader-data/<source>` to a `destination` inside the DTU before the judge runs.
 
-### YAML form (for stored rubric files)
+### Single evaluation with a hidden answer key
 
 ```yaml
-rubric:
-  version: "1.0"
-  project: image-tagging
-  description: Implementation and functional-run rubric for the image tagging task
-
-  tests:
-    - name: implementation
-      weight: 40                # percent of final score (weights across tests sum to 100)
-      criteria:
-        - key: prompt_has_examples
-          points: 25
-          critical: true
-          question: >
-            Does the prompt include at least 3 distinct examples showing the exact tag format
-            (e.g. 'outdoor, sunset, mountain, landscape')? A single generic example does not count.
-        - key: uses_ollama
-          points: 20
-          question: Does the code use Ollama for image tagging?
-        # ... criteria points sum to 100
-
-    - name: functional_run
-      weight: 60
-      criteria:
-        - key: script_runs_successfully
-          points: 25
-          question: Does the script run without errors when given the test images directory?
-        # ... criteria points sum to 100
+evaluations:
+  - name: answer_correctness
+    weight: 1.0
+    mounts:
+      - source: reference.json          # resolved under the task's grader-data/
+        destination: /grader/reference.json
+    steps: |
+      1. Read the solver's answer from /workspace/answer.txt.
+      2. Read the reference answer from /grader/reference.json (mounted above).
+      3. Compare; award the point only on an exact or numerically-equivalent match.
+    rubric:
+      answer_correct:
+        points: 1
+        description: >
+          Does the solver's final answer match the reference? Score 0 if the
+          answer file is missing, ambiguous, or wrong.
 ```
 
-### Constraints
+### Two phases, weighted
 
-- All criterion keys are unique snake_case
-- All criterion `points` values are positive integers
-- Within each test (or within a single-test rubric), `points` sum to exactly 100
-- The `score` field is always present in the Python form; in YAML it is implied by the schema
-- 5 to 10 criteria per rubric is typical; more than 15 usually means several can be merged
-- Prefix critical criteria with `CRITICAL:` in the question text
-- When splitting into multiple tests, the test `weight` values sum to 100
+```yaml
+evaluations:
+  - name: implementation
+    weight: 0.4
+    steps: |
+      Explore the project directory. Read the main script and any README, then
+      verify the model, prompt examples, CLI input, and CSV output shape.
+    rubric:
+      prompt_has_examples:
+        points: 25
+        description: >
+          CRITICAL: Does the prompt include at least 3 distinct examples showing
+          the exact tag format (e.g. 'outdoor, sunset, mountain, landscape')?
+          A single generic example does not count.
+      uses_ollama:
+        points: 20
+        description: Does the code use Ollama for image tagging?
+      correct_model:
+        points: 20
+        description: Is the model `gemma3:4b-it-q4_K_M` specified in the code?
+      csv_output_structure:
+        points: 15
+        description: 'Does the CSV have columns: file_path, file_name, tags?'
+      folder_input:
+        points: 10
+        description: Can the script accept a folder path as input?
+      readme_installation:
+        points: 5
+        description: Does the README explain how to install Ollama and pull the model?
+      readme_exists:
+        points: 5
+        description: Does a README exist?
 
-## Example: Image Tagging Implementation Rubric
-
-```python
-RUBRIC_IMPLEMENTATION = {
-    "prompt_has_examples": (
-        "str - (25 points) CRITICAL: Does the prompt include at least 3 distinct examples "
-        "showing the exact tag format (e.g. 'outdoor, sunset, mountain, landscape')? "
-        "A single generic example does not count."
-    ),
-    "uses_ollama": "str - (20 points) Does the code use Ollama for image tagging?",
-    "correct_model": "str - (20 points) Is the model `gemma3:4b-it-q4_K_M` specified in the code?",
-    "csv_output_structure": "str - (15 points) Does the CSV output have columns: file_path, file_name, tags?",
-    "folder_input": "str - (10 points) Can the script accept a folder path as a CLI argument?",
-    "readme_installation": "str - (5 points) Does the README explain how to install Ollama and pull the model?",
-    "readme_exists": "str - (5 points) Does a README exist?",
-    "score": "float - Score between 0 and 100. Sum the points earned from each criterion.",
-}
+  - name: functional_run
+    weight: 0.6
+    steps: |
+      Start Ollama if needed, run the script against the test images directory,
+      then read the generated CSV and check its rows and tag quality.
+    rubric:
+      script_runs_successfully:
+        points: 25
+        description: Does the script run without errors on the test images directory?
+      # ... remaining criteria
 ```
 
-Why these weights:
+This is the real `image_tagging` grader (`amplifier-benchmark/tasks/image_tagging/grader.yaml`); read it in full for a complete two-phase rubric.
 
-- `prompt_has_examples` (25): the requirement most often missed by agents that skim the instructions. The "at least 3 distinct examples" specificity blocks single-example slop from getting full credit.
-- `uses_ollama` and `correct_model` (20 each): gate criteria. Get these wrong and the rest is moot, but they are also the kind of thing a competent agent gets right. The points are there to keep the score honest, not to discriminate.
-- `csv_output_structure` (15): specific column requirement. Moderate discrimination value.
-- `folder_input` (10): easy to satisfy, easy to verify.
-- README criteria (5 each): trivial to confirm, not where quality lives.
+Why these weights: `prompt_has_examples` (25) is the requirement most often missed by agents that skim the instructions, and the "at least 3 distinct examples" specificity blocks single-example slop from full credit. `uses_ollama` and `correct_model` (20 each) are gate criteria a competent agent gets right; the points keep the score honest rather than discriminate. `csv_output_structure` (15) is a specific column requirement with moderate discrimination value, `folder_input` (10) is easy to verify, and the README criteria (5 each) are trivial to confirm. The implementation pass concentrates points on the one criterion that distinguishes careful work from a quick first pass; the functional run pass (weight 0.6) is where the real discrimination happens, since an agent that never runs its own script scores far lower there than on the structural checks.
 
-The rubric concentrates 25 points on the one criterion that actually distinguishes careful work from a quick first pass. A surface-reader agent scores around 50 to 60. A careful agent scores 90+.
+### Schema constraints
+
+- Criterion keys are unique snake_case within an evaluation
+- `points` is a positive integer; the per-evaluation total is whatever you choose
+- `weight` is a float; weights are relative and need not sum to anything
+- There is no `score` field and no `critical:` field; put `CRITICAL:` in the `description`
+- `mounts` is optional

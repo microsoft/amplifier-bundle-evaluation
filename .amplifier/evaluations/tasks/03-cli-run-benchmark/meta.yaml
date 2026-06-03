@@ -1,0 +1,20 @@
+name: 03-cli-run-benchmark
+description: >
+  When asked to run two of the CLI's BUILT-IN amplifier-benchmark tasks
+  (arxiv_conclusion_extraction and cpsc_recall_monitor) against the
+  amplifier-foundation agent, does the /evaluation mode drive the
+  amplifier-evaluation CLI to run them in parallel and emit result artifacts?
+  Also exercises that the CLI/library actually ships the built-in tasks.
+difficulty: medium
+categories:
+  - meta-eval
+  - bundle-evaluation
+  - cli
+  - benchmark
+# Nested-DTU run. The outer host (Incus + Docker) installs the
+# amplifier-evaluation CLI from a built wheel (built-in benchmark suite shipped
+# inside it), then the agent under test drives that CLI, which launches two
+# inner benchmark DTUs in parallel (each installs amplifier-foundation, runs a
+# built-in task, and grades it) before the outer grader inspects the emitted
+# results. Wide budget to absorb two layers of provisioning.
+timeout: 5400

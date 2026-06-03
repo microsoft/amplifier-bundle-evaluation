@@ -1,5 +1,9 @@
 # Industry Benchmarks
 
+Before implementing a public industry benchmark, confirm it is the right tool. For broad, off-the-shelf evaluation, prefer `amplifier-benchmark` (the curated task set shipped in this bundle): it spans a wider range of agent tasks and runs directly through the amplifier-evaluation harness. Reach for a public benchmark like SWE-bench or HLE only when something necessitates it:
+- You need to compare against externally reported, published results in a standard way.
+- You need more tasks, greater scale, or a specific capability (for example visual reasoning, or pure code-fixing at scale) that amplifier-benchmark does not cover.
+
 The key things to keep in mind when implementing industry benchmarks are:
 a) Implement them faithfully and integrate the thing being evaluated so it actually uses the benchmark examples correctly.
 b) Be mindful of how many benchmark examples to run. Often the user does not want, or does not have the budget to run all, or even a portion, of the entire benchmark. Instead, start by sampling only around 5 examples. From there, ask the user if they want more, making them aware of the potential cost.
@@ -51,7 +55,7 @@ print(ds[0].keys())
 print(ds[0]["problem_statement"])
 ```
 
-Both variants share the core SWE-bench fields: `repo`, `instance_id`, `base_commit`, `problem_statement`, `patch`, `test_patch`, `FAIL_TO_PASS`, `PASS_TO_PASS`. Multimodal additionally provides an `image_assets` field with image URLs tied to the problem statement, patch, or test patch. ([SWE-bench][2])
+Both variants share the core SWE-bench fields: `repo`, `instance_id`, `base_commit`, `problem_statement`, `patch`, `test_patch`, `FAIL_TO_PASS`, `PASS_TO_PASS`. Multimodal additionally provides an `image_assets` field with image URLs tied to the problem statement, patch, or test patch.
 
 #### Your model's job
 
@@ -109,7 +113,7 @@ Make sure that the agent you are validating is properly configured to get the be
 It is CRITICAL that the answers and evaluation logic are not leaked in your setup.
 
 
-### Humanity’s Last Exam (HLE)
+### 2. Humanity’s Last Exam (HLE)
 
 Humanity’s Last Exam is a multimodal, closed-ended academic benchmark with 2500 questions across many subjects, including math, humanities, and natural sciences. It contains multiple-choice and short-answer questions designed for automated grading.
 

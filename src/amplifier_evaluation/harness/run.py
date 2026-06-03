@@ -17,20 +17,12 @@ Usage from Python:
         max_parallel=2,
     )
 
-Usage from the command line (for testing):
-
-    python -m amplifier_evaluation.harness.run \\
-        --agents amplifier-benchmark/agents \\
-        --tasks amplifier-benchmark/tasks \\
-        --output tmp/run-001 \\
-        --max-parallel 2 \\
-        --pair amplifier-foundation:cpsc_recall_monitor \\
-        --pair openai-codex-cli:cpsc_recall_monitor
+From the command line, use the installable ``amplifier-evaluation run`` CLI
+(``cli.py``), which wraps this ``run()``.
 """
 
 from __future__ import annotations
 
-import argparse
 import asyncio
 import json
 import logging
@@ -269,99 +261,3 @@ async def run(
     )
 
     return run_result
-
-
-def _parse_pair(value: str) -> tuple[str, str]:
-    if ":" not in value:
-        raise argparse.ArgumentTypeError(f"--pair must be agent:task, got {value!r}")
-    agent, _, task = value.partition(":")
-    return agent.strip(), task.strip()
-
-
-def _parse_launch_var(value: str) -> tuple[str, str]:
-    if "=" not in value:
-        raise argparse.ArgumentTypeError(
-            f"--launch-var must be KEY=VALUE, got {value!r}"
-        )
-    key, _, val = value.partition("=")
-    key = key.strip()
-    if not key:
-        raise argparse.ArgumentTypeError(f"--launch-var KEY cannot be empty: {value!r}")
-    return key, val
-
-
-def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(
-        prog="amplifier-evaluation-harness",
-        description="Run a batch of agent x task evaluations end to end.",
-    )
-    p.add_argument("--agents", required=True, help="Path to agents/ directory")
-    p.add_argument("--tasks", required=True, help="Path to tasks/ directory")
-    p.add_argument(
-        "--pair",
-        action="append",
-        type=_parse_pair,
-        required=True,
-        help="agent:task pair to evaluate (repeatable)",
-    )
-    p.add_argument("--output", required=True, help="Output directory for results")
-    p.add_argument("--max-parallel", type=int, default=2)
-    p.add_argument("--trials-per-pair", type=int, default=1)
-    p.add_argument(
-        "--launch-var",
-        action="append",
-        type=_parse_launch_var,
-        default=[],
-        help=(
-            "KEY=VALUE pair forwarded to `amplifier-digital-twin launch --var KEY=VALUE`"
-            " for every trial. Repeatable. Used to inject e.g. Gitea URL/token for"
-            " profile url_rewrites substitution."
-        ),
-    )
-    p.add_argument(
-        "--quiet",
-        action="store_true",
-        help="Suppress per-trial event lines on the console (header/footer only).",
-    )
-    p.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Echo INFO logs to the console in addition to the event lines.",
-    )
-    p.add_argument("--log-level", default="INFO")
-    args = p.parse_args(argv)
-
-    out = Path(args.output).resolve()
-    _setup_logging(
-        out,
-        file_level=args.log_level,
-        console_level="INFO" if args.verbose else "WARNING",
-    )
-
-    launch_vars: dict[str, str] = {}
-    for key, val in args.launch_var:
-        launch_vars[key] = val
-
-    result = asyncio.run(
-        run(
-            agents_dir=args.agents,
-            tasks_dir=args.tasks,
-            selection=args.pair,
-            output_dir=args.output,
-            trials_per_pair=args.trials_per_pair,
-            max_parallel=args.max_parallel,
-            show_progress=not args.quiet,
-            launch_variables=launch_vars or None,
-        )
-    )
-
-    counts = result.summary_counts
-    print(f"\nRun {result.run_id} finished.")
-    print(f"  output: {result.output_dir}")
-    print(f"  counts: {counts}")
-    failed = counts.get("failed", 0) + counts.get("cancelled", 0)
-    return 1 if failed else 0
-
-
-if __name__ == "__main__":  # pragma: no cover
-    sys.exit(main())

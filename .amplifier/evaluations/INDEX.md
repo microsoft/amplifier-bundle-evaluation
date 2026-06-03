@@ -17,6 +17,7 @@ User-facing templates live in `examples/`; agent task benchmarks live in
   tasks/
     01-evaluate-amplifier-bundle/
     02-industry-benchmark-routing/
+    03-cli-run-benchmark/
   results/<run-id>/            harness output (gitignored)
 ```
 
@@ -26,6 +27,7 @@ User-facing templates live in `examples/`; agent task benchmarks live in
 |---|---|
 | 01-evaluate-amplifier-bundle | `/evaluation` mode scaffolds a usable harness when handed a new Amplifier bundle |
 | 02-industry-benchmark-routing | `/evaluation` mode routes a broad model-swap validation question to the amplifier-benchmark suite (starting with ~5 tasks) instead of suggesting custom one-off tasks |
+| 03-cli-run-benchmark | `/evaluation` mode drives the `amplifier-evaluation` CLI to actually run two benchmark tasks for the amplifier-foundation agent and emit result artifacts (nested DTU) |
 
 Both evals exercise the same agent: an amplifier session with
 `amplifier-foundation` and `amplifier-bundle-evaluation` composed. They
@@ -67,11 +69,11 @@ still pulls the bundle from a non-main ref) requires `${GITEA_URL}` and
 dependency.
 
 ```bash
-python3 -m amplifier_evaluation.harness.run \
-    --agents .amplifier/evaluations/agents \
-    --tasks  .amplifier/evaluations/tasks \
+python3 -m amplifier_evaluation run \
+    --agents-dir .amplifier/evaluations/agents \
+    --tasks-dir  .amplifier/evaluations/tasks \
     --pair   amplifier-evalbundle:02-industry-benchmark-routing \
-    --output .amplifier/evaluations/results/$(date -u +%Y%m%dT%H%M%SZ) \
+    --output-dir .amplifier/evaluations/results \
     --launch-var GITEA_URL=http://localhost:10110 \
     --launch-var GITEA_TOKEN=<token> \
     --launch-var EVAL_BUNDLE_REF=feat/v2-integration

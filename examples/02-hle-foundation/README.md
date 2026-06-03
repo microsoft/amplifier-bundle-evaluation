@@ -3,7 +3,7 @@
 Measures `amplifier-foundation`'s correctness on a single, pinned
 [Humanity's Last Exam](https://huggingface.co/datasets/cais/hle) (HLE) question.
 Built on the `amplifier_evaluation` library: an `agents/` + `tasks/` definition
-driven by the stock harness (`python -m amplifier_evaluation.harness.run`).
+driven by the stock harness via the `amplifier-evaluation` CLI (`python -m amplifier_evaluation run`).
 
 Type: off-the-shelf benchmark, single-variant capability measurement.
 

@@ -3,7 +3,7 @@
 End-to-end demo of the evaluation bundle in the `amplifier_evaluation` library
 format: 3 HLE tasks + 3 SWE-bench Multimodal tasks, each run against TWO agent
 variants (`amplifier-foundation` and `amplifier-dev`) for 12 total trials,
-dispatched through the stock harness with a parallelism cap.
+dispatched through the stock harness via the `amplifier-evaluation` CLI (`python -m amplifier_evaluation run`) with a parallelism cap.
 
 Type: multi-task, two-variant demo, mixed judge + programmatic grading.
 

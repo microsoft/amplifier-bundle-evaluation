@@ -3,7 +3,7 @@
 Measures `amplifier-foundation`'s ability to resolve a single, pinned
 [SWE-bench Multimodal](https://huggingface.co/datasets/princeton-nlp/SWE-bench_Multimodal)
 GitHub issue (dev split). Built on the `amplifier_evaluation` library: an
-`agents/` + `tasks/` definition driven by the stock harness.
+`agents/` + `tasks/` definition driven by the stock harness via the `amplifier-evaluation` CLI (`python -m amplifier_evaluation run`).
 
 Type: off-the-shelf benchmark, single-variant, code-patch task, programmatic grading.
 
