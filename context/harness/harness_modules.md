@@ -16,7 +16,7 @@ Key types:
 
 - `AgentSpec` — one agent loaded from `agents/<id>/`. Carries `install` (parsed `install.yaml`), `meta`, and `invocation_md`.
 - `TaskSpec` — one task loaded from `tasks/<id>/`. Exposes `timeout_s`.
-- `TrialSpec` — `(agent, task, trial_number)`. The atomic unit of work.
+- `TrialSpec` — `(agent, task, trial_number)` plus optional `launch_variables` forwarded to the DTU launch. The atomic unit of work.
 - `TrialState` — Enum: `pending`, `launching`, `installing`, `seeding`, `running_agent`, `extracting`, `grading`, `cleaning_up`, `completed`, `failed`, `cancelled`. The `is_terminal` property flags the last three.
 - `TrialResult` — the final outcome handed back to callers. Mirrors the final `state.json`.
 - `RunSpec` / `RunResult` — top-level inputs and outputs.
@@ -183,20 +183,25 @@ result = await run(
     output_dir="results/my-run",
     trials_per_pair=1,
     max_parallel=2,
+    launch_variables={"SWE_REPO": "owner/name"},  # optional, forwarded to launch --var
+    run_id=None,  # optional; defaults to a timestamped id
 )
 ```
 
-Also runnable as a module for testing:
+The only command-line front end is the installable `amplifier-evaluation` CLI (`cli.py`), available on PATH after `uv tool install` and as `python -m amplifier_evaluation run` from any environment where the package is importable. It wraps this same `run()`:
 
 ```bash
-python -m amplifier_evaluation.harness.run \
-  --agents amplifier-benchmark/agents \
-  --tasks amplifier-benchmark/tasks \
-  --output results/my-run \
+amplifier-evaluation run \
+  --agents-dir amplifier-benchmark/agents \
+  --tasks-dir amplifier-benchmark/tasks \
+  --output-dir results \
+  --agent amplifier-foundation \
+  --task cpsc_recall_monitor \
   --max-parallel 2 \
-  --pair amplifier-foundation:cpsc_recall_monitor \
-  --pair openai-codex-cli:cpsc_recall_monitor
+  --trials-per-pair 1
 ```
+
+Selection is either the cartesian product of `--agent` × `--task` (both repeatable; default: everything discovered) or explicit `--pair agent:task` (repeatable; mutually exclusive with `--agent`/`--task`). `--launch-var KEY=VALUE` (repeatable) is how examples 03 and 04 inject `SWE_REPO`/`SWE_COMMIT`; `--run-id` pins the output subdirectory name (the form the example `run.sh` scripts use); `--dry-run` previews the selection. See `amplifier-evaluation run --help` for the full list.
 
 Consumers that need different behaviour can either pass overrides to `run()` or copy `run.py` and edit it directly. Bricks are stable; the example is meant to be replaced.
 
@@ -211,7 +216,8 @@ One harness invocation produces:
   trials/<trial-id>/
     state.json             state machine + history + per-stage summaries
     trial.log              human-readable transition log
-    install.log            agent install output (setup_cmds path only)
+    launch_profile.yaml    task profile merged with the agent's required env (compose_launch_profile)
+    install.log            agent install output (setup_cmds)
     instructions.txt       task instructions pushed into the DTU
     ai_user.json           AI User result (conclude verdict, session id, full text)
     extraction/            Extractor output: extraction_report.md + manifest.json + pulled artifacts

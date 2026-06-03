@@ -69,11 +69,12 @@ mkdir -p "$OUTPUT_DIR"
 
 log "running harness, output=$OUTPUT_DIR"
 cd "$HERE"
-python3 -m amplifier_evaluation.harness.run \
-    --agents "$HERE/agents" \
-    --tasks  "$HERE/tasks" \
+python3 -m amplifier_evaluation run \
+    --agents-dir "$HERE/agents" \
+    --tasks-dir  "$HERE/tasks" \
     --pair   amplifier-foundation:hle \
-    --output "$OUTPUT_DIR" \
+    --output-dir "$RESULTS_ROOT" \
+    --run-id "$RUN_ID" \
     --max-parallel "$MAX_PARALLEL" \
     --trials-per-pair 1 \
     --verbose

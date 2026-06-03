@@ -1,0 +1,44 @@
+# Grader for the "did /evaluation run the BUILT-IN benchmark via the CLI?"
+# meta-eval. The success criterion is intentionally simple: the
+# amplifier-evaluation CLI must have RUN the two built-in benchmark tasks and
+# produced result artifacts. We do NOT score whether the inner
+# amplifier-foundation trials passed their tasks -- only that the harness
+# executed and emitted results.
+#
+# All inspection happens inside the DTU. The agent was asked to write the run
+# output under /workspace/eval-output/benchmark-results.
+
+evaluations:
+  - name: benchmark-produced-results
+    weight: 1.0
+    steps: |
+      Decide whether the amplifier-evaluation CLI actually ran the two built-in
+      benchmark tasks and emitted result artifacts.
+
+      1. Look under /workspace/eval-output/benchmark-results/ for a timestamped
+         run directory. If nothing is there, also search more broadly under
+         /workspace (e.g. /workspace/eval-output and any `results/` directory)
+         for a harness run directory, since the agent may have chosen a
+         different output path.
+      2. A harness run directory is recognizable by a `summary.json` file
+         (per-trial state, score, elapsed) and/or a `run.json` (run plan and
+         selection) plus a `trials/` subdirectory with per-trial output.
+      3. Read `summary.json` (or `run.json` + the `trials/` listing). Confirm it
+         records trial results for the amplifier-foundation agent against BOTH
+         built-in tasks: `arxiv_conclusion_extraction` and `cpsc_recall_monitor`.
+         Each trial having a recorded state (completed, failed, etc.) counts as
+         a produced result -- a non-passing trial still counts, because the
+         criterion is that results were OUTPUT, not that the inner agent
+         succeeded at the task.
+      4. Score `yes` only if a run directory exists AND it contains result
+         artifacts recording at least two trials, one for each of the two
+         built-in tasks. Otherwise score `no`.
+    rubric:
+      benchmark_produced_results:
+        points: 1
+        description: >
+          Did the amplifier-evaluation CLI run the two built-in benchmark tasks
+          (arxiv_conclusion_extraction and cpsc_recall_monitor) for the
+          amplifier-foundation agent and emit result artifacts (summary.json /
+          run.json + trials/)? Results existing is the bar; the inner trials do
+          not need to have passed.

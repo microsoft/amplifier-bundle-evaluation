@@ -1,133 +1,48 @@
 # Harness Automation
 
-Once a scenario is decided, wrap it in an automation so anyone can run it, re-run it, and get comparable results. The goal is a single script (per scenario) that stands up a fresh environment, runs the scenario, captures everything needed for analysis, and tears down cleanly. If necessary, later steps can consolidate scenarios into one script or come up with smarter ways to speed it up. Also, note that some of these steps are specific to Amplifier - adjust as needed.
+Once a scenario is decided, wrap it in an automation so anyone can run it, re-run it, and get comparable results: stand up a fresh environment, run the scenario, capture everything for analysis, and tear down cleanly.
 
-Use `@evaluation:examples/01-explorer-removal/` as the prescribed template. It is a working comparison evaluation (foundation with vs without the `foundation:explorer` agent), and every new scenario should start by copying its structure.
-
-## Directory layout
+In most cases, you should not start by handrolling it. The amplifier-evaluation library is the automation mechanism: AI User, Grader, Extractor, and a harness `run()` that, per trial, launches a Digital Twin Universe, installs the agent, seeds the workspace, runs the agent, extracts artifacts, grades, and destroys the environment. It writes a structured run tree (`run.json`, `summary.json`, and per-trial `state.json`, `ai_user.json`, `extraction/`, `grader/`). Read the library reference for how to run it:
 
 ```
-evaluations/<NN-short-name>/
-  README.md          # What this scenario evaluates and why
-  change.md          # (Comparison only) what changes between before and after
-  profiles/
-    before.yaml      # DTU profile for the baseline (single profile if not A/B)
-    after.yaml       # DTU profile for the variant
-  run.sh             # Runner: preflight, launch, run, capture
-  metrics/
-    extract_metrics.py   # Pulls structured metrics from a captured run
-    summarize_run.py     # Renders a per-run markdown summary at the run root
-  results/
-    <YYYY-MM-DD>/
-      report.md            # (Optional) summary
-      before/run-1/
-        meta.json
-        stdout.txt
-        sessions/sessions/<session_id>/events.jsonl
-        sessions/sessions/<session_id>/transcript.jsonl
-        analysis/            # (Optional) Post-run analyzer's narrative + classification
-        verdict-{outcome}.md # Rendered markdown summary — start here
-      after/run-1/
-        (same shape)
+read_file file_path="@evaluation:context/harness/overview.md"
 ```
 
-Keep the `results/` shape identical across scenarios. That way the same metrics extraction script (or any downstream analysis) works against any run directory without modification.
+You can see what the worked examples do: `examples/01-explorer-removal` drives the library bricks directly from a custom `harness.py` for a before/after comparison; `examples/02`, `03`, and `04` run off-the-shelf tasks through the harness from their own `run.sh` scripts.
 
-## Treat `results/` as potentially sensitive
+The library handles the lifecycle. The guardrails below are the expertise it does not enforce for you.
 
-A `results/` directory captures `events.jsonl`, `transcript.jsonl`, `stdout.txt`, `meta.json`, and any analyzer output. These can contain provider keys (if a key ever leaks into a log line or event payload), full prompts and responses (which may include private repo content or user-specific data), absolute host paths, and the agent's complete reasoning trace. Never commit them.
+## Where output goes, and never commit it
 
-This bundle's `.gitignore` already covers `examples/*/results/` and `.amplifier/evaluations/*/results/` so any scenario added under those paths is safe by default. When adding a scenario in a different repo, do ONE of the following before the first run:
+A run directory captures `events.jsonl`, `transcript.jsonl`, stdout, profiles, and grader output. These can hold provider keys, full prompts and responses (including private repo content), absolute host paths, and the agent's complete reasoning trace. By default they must not be source controlled.
 
-- Add a matching pattern to that repo's `.gitignore` (e.g. `results/` or `evaluations/*/results/`), OR
-- Point the runner at a path outside the repo entirely, such as `~/.cache/amplifier-eval/<scenario>/<date>/`, and pass that path into the scenario's metrics scripts as an argument.
+Decide where output lands before the first run:
 
-Sanity check before any commit: `git status` should never list files under a `results/` path. If it does, stop and update `.gitignore` before staging anything.
+- If the project already has a pattern, match it: an existing evaluation output directory in the workspace, or a location defined in `AGENTS.md` or another context file.
+- Otherwise, ask the user where they want evaluation outputs, noting that by default these should not be source controlled.
+- Default suggestion: a sortable, per-project directory in the workspace root rather than inside an individual repo, e.g. `.amplifier/evaluation/<project>/<sortable-datetime>/` (such as `.amplifier/evaluation/explorer-removal/20260603T135349Z/`).
 
-## The DTU profile
+Make sure the chosen location is git-ignored before the first run. Sanity check before any commit: `git status` should never list captured run output.
 
-The profile is the source of truth for the environment. At a minimum it includes:
+## Make a comparison vary exactly one dimension
 
-- Base image (`ubuntu:24.04` is a safe default)
-- `url_rewrites` redirecting any repos the scenario depends on to your local Gitea mirror, so you can pin specific branches or work-in-progress code
-- `passthrough` for any provider keys the agent will need (`ANTHROPIC_API_KEY`, etc.)
-- `provision.setup_cmds` that install the CLI, configure providers, add the required bundles, and clone any target repos the scenario operates on
-- `readiness` checks that prove the environment is actually usable before the scenario runs
+For before/after (A/B) evaluations, the two variants must differ in exactly one dimension (the foundation branch, the model, the prompt). Everything else (CLI version, other bundles, target repo, provider config) stays identical, or the diff is uninterpretable. The DTU profile is the source of truth for the environment: redirect any repos the scenario depends on to a local Gitea mirror with `url_rewrites` so you can pin a branch or work-in-progress code, and pass secrets like `GITEA_TOKEN` at launch via `--var`, never baked into the profile.
 
-For comparison evaluations, the before and after profiles should differ in exactly one dimension. In example 01 that is the foundation branch (`@main` vs `@remove-explorer`). Everything else (CLI version, other bundles, target repo, provider config) is identical.
+## Capture enough to reconstruct the run later
 
-Pass secrets like `GITEA_TOKEN` at launch time via `--var ...`, never baked into the profile.
+The harness records most of this automatically; hold to these principles for anything you add or for a custom harness:
 
-## The runner script
-
-`run.sh` orchestrates the full lifecycle. The example follows this shape:
-
-1. **Preflight.** Verify required tools are on PATH (`amplifier-gitea`, `amplifier-digital-twin`, `gh`, `git`, `docker`) and that the provider key is set. Fail loudly if anything is missing.
-2. **Reuse or create the Gitea instance.** Start a stopped container if one already exists, otherwise create one. Capture its id, port, and token.
-3. **Mirror the upstream repos** the scenario depends on to Gitea. Skip if already mirrored.
-4. **Build any custom branches** the scenario needs (e.g. the "after" branch with the local change applied). Do this in a throwaway clone of the Gitea mirror. Never touch the user's workspace submodules.
-5. **For each variant**:
-   - Destroy any prior DTU with the same name (idempotent re-runs)
-   - Launch the DTU from its profile, passing `GITEA_URL` and `GITEA_TOKEN` as vars
-   - Time the scenario and run it (`amplifier-digital-twin exec ... -- amplifier run "<prompt>"`)
-   - Extract the session id from stdout, then `file-pull` the session directory out of the DTU
-   - Write a `meta.json` capturing wall time, exit code, prompt, repo SHAs, and pointers to session files
-
-Make the runner idempotent. Re-running on the same day either replaces or extends `results/<date>/`. On a new day it creates a fresh directory.
-
-## What to capture per run
-
-A run is the unit of replayable evidence. Capture enough that six months from now you (or any downstream consumer) can reconstruct what happened without re-running.
-
-The guidance here is deliberately generic — most of what you capture is the same whether you are evaluating an Amplifier session, a script, a third party agent, or a CLI tool.
-
-### Minimum artifacts
-
-- `meta.json` — the structured record of the run (fields below)
-- `stdout.txt` — the full output as the user would see it
-- Full execution record. *Amplifier:* `sessions/sessions/<session_id>/events.jsonl` + `transcript.jsonl`. *Generic:* whatever your system emits — logs, traces, transcripts, structured events.
-
-### Fields in `meta.json`
-
-- **`scenario_description`** — the plain-English description of what this run tests. *Generic:* "the goal of this run, in one sentence." *Amplifier:* often the eval mode name plus a short version of the prompt.
-- **`prompt`** — the verbatim input handed to the system under test, byte-for-byte. *Amplifier:* the text passed to `amplifier run --prompt ...`. *Generic:* whatever your system received — prompt, query, payload, request body.
-- **`judge_rubric`** — if a separate evaluator scored the run, inline its criteria (not just a path). *Amplifier:* judge LLM system prompt + `rubric.md` content. *Generic:* the rule set, the test code, or the scoring criteria — inlined or copied into the run directory. If the rubric evolves later, today's verdicts become uninterpretable without this.
-- **`failure: {stage, message, traceback, exit_code}`** — populated whenever anything errors. Never let errors survive only as buried text in stdout. *Amplifier:* solver exit code, hook failures, mode-gate denials, judge errors. *Generic:* whatever structured error your system can surface — process exit, exception, HTTP status, validation failure.
-- **`cost_usd` + `tokens`** — structured cost data, not stdout-grep. *Amplifier:* derive from `llm:response` events; store `cost_usd`, `model`, and input/output/cache token counts. *Generic:* whatever your provider returns — currency, billable units, model id. If there is no cost, omit the field rather than zero-fill.
-- **Profile / config snapshot** — the configuration that produced the run, not a path to it. *Amplifier:* copy `profiles/<variant>.yaml` into the run directory as `profile.snapshot.yaml`, or store its sha256 in `meta.json`. *Generic:* the config file content, or a sha256 plus a copy. Paths alone are useless if the file changes after the run.
-- **Dependency inventory** — every version of every component active during the run. *Amplifier:* `amplifier bundle list` output saved to `bundles.txt`, plus core/foundation SHAs. *Generic:* `pip freeze` / `npm ls --depth=0` / `go mod graph` / equivalent, saved into the run directory.
-- **Existing fields**: wall time, exit code, DTU/instance id, profile path, SHAs of every repo installed, pointers to session/execution files.
-
-## Metrics extraction
-
-The runner captures raw evidence. A separate script turns that evidence into numbers. This separation matters because:
-
-- Metrics can be re-extracted over old runs without re-running the scenario
-- Multiple scenarios can share the same extraction script
-- New questions about old runs are answerable from the same captured data
-
-The example's `extract_metrics.py` pulls:
-
-- Wall time from `meta.json`, cross-checked against event timestamps
-- Root-session input, output, and cache token counts from `llm:response` events
-- Tool call counts and tool mix from `tool:pre` events
-- Delegation targets from `delegate:agent_spawned` events
-- The final assistant message text from `transcript.jsonl`
-- File-line citations via regex over the final answer
-
-For a new scenario, edit the script to add scenario-specific extractions (did the agent invoke a particular tool, did the output match an expected pattern, etc.). The token, event, and delegation extraction is general and worth reusing as is.
-
-## Sample count
-
-The directory shape supports multiple runs (`run-1/`, `run-2/`, etc.). For guidance on how many runs to do, see the Measurement section of `custom-scenarios.md`. As a practical starting point, get one run per variant working end-to-end before adding more.
+- Snapshot the config that produced the run (the profile content or its hash), not a path to it.
+- Inline the grader rubric with the results, not just a reference. If the rubric changes later, old verdicts become uninterpretable without it.
+- Capture cost, tokens, and a dependency inventory (bundle list, core and foundation SHAs) per run.
+- Surface failures structurally (stage, message, exit code), never only as buried stdout text.
+- Keep raw capture separate from metrics extraction, so metrics can be re-derived over old runs without re-running them.
 
 ## Tips
 
-- When iterating on a profile, launch it first (`amplifier-digital-twin launch profiles/before.yaml --var ...`), exec a shell in, verify the environment works, then wire it into the runner.
-- Log generously to stderr in `run.sh`. The `log()` and `die()` helpers in the example are worth copying as is.
-- Never modify the user's local code or files. Always push all code and changes directly into the DTU and Gitea
-
+- Iterate on a profile by launching it and exec-ing a shell in to verify the environment before wiring it into the run.
+- Never modify the user's local code or files. Push all code and changes into the DTU and Gitea.
 
 ## Next
 
-With the harness in place, run it once and look at what came back. See the **Analyze the results** and **Analyze the Patterns** steps in `modes/evaluation.md` for guidance on reading the output and deciding whether the scenario needs more iteration.
+With the harness running, look at what came back. See the **Analysis** step in `modes/evaluation.md` for reading the output and deciding whether the scenario needs iteration.

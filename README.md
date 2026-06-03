@@ -51,6 +51,25 @@ uv sync
 
 The first sync builds `amplifier-core` from source (Rust extension), which takes a minute or two. After that, the AI User is importable as `from amplifier_evaluation.ai_user import AIUser`. See [`context/harness/overview.md`](context/harness/overview.md) for layout, task/agent schemas, and usage.
 
+### CLI
+
+The bundle ships an `amplifier-evaluation` CLI for running the benchmark. Install it on PATH:
+
+```bash
+uv tool install git+https://github.com/microsoft/amplifier-bundle-evaluation@main
+```
+
+It is also runnable as a module without installing (`python -m amplifier_evaluation run`).
+
+Run the benchmark over every `(agent, task)` permutation discovered under `amplifier-benchmark/`:
+
+```bash
+amplifier-evaluation run --agents-dir amplifier-benchmark/agents --tasks-dir amplifier-benchmark/tasks
+```
+
+The default `--agents-dir` and `--tasks-dir` resolve relative to the current directory, so running from a repo checkout needs no flags. Use `--agent`/`--task` to restrict the selection (or `--pair agent:task` for explicit pairings) and `--dry-run` to preview it. See `amplifier-evaluation run --help` for the full option list.
+
+
 ## Contributing
 
 > [!NOTE]

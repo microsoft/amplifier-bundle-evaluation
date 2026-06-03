@@ -17,7 +17,7 @@
 # Usage:
 #   ./run.sh                # both evals (01 + 02)
 #   ./run.sh 02             # just one eval by id prefix
-#   ./run.sh 01 02          # explicit list
+#   ./run.sh 01 02 03       # explicit list
 #
 # Environment overrides:
 #   EVAL_BUNDLE_REF   LOCAL git ref whose HEAD to deploy (default: the
@@ -74,7 +74,7 @@ fi
 [ -n "${ANTHROPIC_API_KEY:-}" ] || die "ANTHROPIC_API_KEY not set and not in ~/.amplifier/keys.env"
 
 # ---- 1. selection --------------------------------------------------------
-ALL_TASKS=("01-evaluate-amplifier-bundle" "02-industry-benchmark-routing")
+ALL_TASKS=("01-evaluate-amplifier-bundle" "02-industry-benchmark-routing" "03-cli-run-benchmark")
 SELECTED=()
 if [ "$#" -eq 0 ]; then
     SELECTED=("${ALL_TASKS[@]}")
@@ -125,7 +125,7 @@ GITEA_TOKEN="$(amplifier-gitea token "$GITEA_ID" | python3 -c 'import json,sys; 
 GITEA_URL="http://localhost:$GITEA_PORT"
 log "gitea: $GITEA_URL  id=$GITEA_ID"
 
-# ---- 3. ensure repo exists in gitea, force-push current ref -------------
+# ---- 3. ensure repo exists in gitea, deploy working-tree snapshot -------
 EXISTS="$(curl -sS -H "Authorization: token $GITEA_TOKEN" \
     "$GITEA_URL/api/v1/repos/admin/$REPO_NAME" -o /dev/null -w '%{http_code}')"
 if [ "$EXISTS" != "200" ]; then
@@ -136,18 +136,40 @@ if [ "$EXISTS" != "200" ]; then
         -o /dev/null
 fi
 
-log "deploying local '$EVAL_BUNDLE_REF' into gitea as '$DEPLOY_BRANCH' (simulating deployed/active)"
+# Deploy the developer's exact WORKING TREE (committed + staged + unstaged +
+# untracked + deletions) into the mirror as `main`, WITHOUT committing anything
+# in the user's repo. We clone the bundle into a throwaway snapshot dir, overlay
+# the working-tree state there, make a single throwaway commit IN THE SNAPSHOT,
+# and force-push that to gitea/main. The user's repo, index, and HEAD are never
+# touched. (Method mirrors the amplifier-tester setup-digital-twin snapshot
+# flow.) This is what lets the agent under test compose/clone the bundle exactly
+# as if the local changes were merged and deployed -- no commit required.
+log "deploying working-tree snapshot of $BUNDLE_ROOT into gitea as '$DEPLOY_BRANCH' (no commit to your repo)"
+command -v rsync >/dev/null || die "rsync not on PATH (needed for the snapshot deploy)"
+SNAP_PARENT="$(mktemp -d)"
+SNAP_DIR="$SNAP_PARENT/$REPO_NAME"
+trap 'rm -rf "$SNAP_PARENT"' EXIT
+git clone --local --no-hardlinks "$BUNDLE_ROOT" "$SNAP_DIR" >/dev/null 2>&1 \
+    || die "failed to clone working-tree snapshot from $BUNDLE_ROOT"
+# Overlay staged + unstaged + untracked (non-ignored) files from the working tree.
+( cd "$BUNDLE_ROOT" && git ls-files -z --cached --modified --others --exclude-standard ) \
+    | rsync -a --files-from=- --from0 "$BUNDLE_ROOT/" "$SNAP_DIR/"
+# Mirror tracked-file deletions from the working tree into the snapshot.
+( cd "$BUNDLE_ROOT" && git ls-files -z --deleted ) \
+    | ( cd "$SNAP_DIR" && xargs -0 --no-run-if-empty rm -f )
 (
-    cd "$BUNDLE_ROOT"
-    git rev-parse "$EVAL_BUNDLE_REF" >/dev/null \
-        || die "ref '$EVAL_BUNDLE_REF' not found in $BUNDLE_ROOT"
+    cd "$SNAP_DIR"
+    git -c user.email=dtu@local -c user.name="DTU Snapshot" add -A
+    git -c user.email=dtu@local -c user.name="DTU Snapshot" \
+        commit --allow-empty -q -m "DTU snapshot of working tree" >/dev/null 2>&1
     git -c credential.helper= push --force \
         "http://admin:$GITEA_TOKEN@localhost:$GITEA_PORT/admin/$REPO_NAME.git" \
-        "$EVAL_BUNDLE_REF:refs/heads/$DEPLOY_BRANCH" >/dev/null 2>&1
+        "HEAD:refs/heads/$DEPLOY_BRANCH" >/dev/null 2>&1
 )
-
-EVAL_SHA="$(cd "$BUNDLE_ROOT" && git rev-parse "$EVAL_BUNDLE_REF")"
-log "deployed $EVAL_BUNDLE_REF ($EVAL_SHA) as gitea/$DEPLOY_BRANCH"
+EVAL_SHA="$(cd "$SNAP_DIR" && git rev-parse HEAD)"
+rm -rf "$SNAP_PARENT"
+trap - EXIT
+log "deployed working-tree snapshot ($EVAL_SHA) as gitea/$DEPLOY_BRANCH"
 
 # ---- 4. run the harness -------------------------------------------------
 RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$(head -c 4 /dev/urandom | xxd -p)"
@@ -163,10 +185,11 @@ done
 log "running harness, output=$OUTPUT_DIR"
 log "selection: $(printf '%s ' "${PAIR_FLAGS[@]}")"
 
-python3 -m amplifier_evaluation.harness.run \
-    --agents "$HERE/agents" \
-    --tasks  "$HERE/tasks" \
-    --output "$OUTPUT_DIR" \
+python3 -m amplifier_evaluation run \
+    --agents-dir "$HERE/agents" \
+    --tasks-dir  "$HERE/tasks" \
+    --output-dir "$RESULTS_ROOT" \
+    --run-id "$RUN_ID" \
     --max-parallel "$MAX_PARALLEL" \
     --trials-per-pair "$TRIALS_PER_PAIR" \
     "${PAIR_FLAGS[@]}" \

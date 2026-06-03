@@ -1,13 +1,13 @@
 # Creating Custom Scenarios
 
-When creating a custom scenario the most important aspects to get right are difficulty, realism (does it actually measure your new feature, or your change?), and meaningful measurement.
+When creating a custom scenario the most important aspects to get right are difficulty, realism (does it actually measure your new feature, or your change?), and meaningful measurement. Someone should be able to look at a product's evals and be able to understand what it aims to do better than anything else out there.
 
 
 ## Difficulty and Realism
 
 One scenario working end to end gets a user ~40% of the way, two ~65%, three ~75%. But that math only holds when each scenario is **high quality**. A low-quality scenario does not add 25 percentage points. It can add zero, or push the signal backwards by making real regressions look like noise.
 
-Quality compounds faster than quantity. Push back hard against the urge to add a fourth or fifth scenario before the first three are difficult, realistic, and trusted.
+Quality compounds faster than quantity. Push back against the urge to add a fourth or fifth scenario before the first three are difficult, realistic, and trusted.
 
 ### What makes a scenario high quality
 

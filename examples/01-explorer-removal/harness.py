@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Custom A/B harness for the explorer-removal eval.
 
-Rather than the stock `amplifier_evaluation.harness.run` entry point (which runs
-agent x task pairs and stops at grading), this harness assembles the lower-level
+Rather than the stock `run()` entry point in `amplifier_evaluation.harness.run`
+(which runs agent x task pairs and stops at grading), this harness assembles the lower-level
 building blocks to run ONE agent and ONE task as two trials -- foundation WITH
 and WITHOUT the foundation:explorer agent -- and then computes the root-context
 metric comparison that is the whole point of this example.

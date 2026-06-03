@@ -31,11 +31,11 @@ A task describes work to give an agent and how to grade the result. Each task li
 - `meta.yaml`: name, difficulty, categories, timeout.
 - `task.yaml`: plain-text instructions handed to the agent.
 - `profile.yaml`: DTU profile the task runs in.
-- `grader.yaml`: one or more weighted `evaluations`, each with `steps` (how to audit) and a `rubric` (criteria with point values).
-- `grader-data/` (optional): files pushed into the DTU after the agent finishes, for the grader to use.
+- `grader.yaml`: one or more weighted `evaluations`, each with `steps` (how to audit), a `rubric` (criteria with point values), and optional `mounts` (host files staged into the DTU before grading -- e.g. an answer key the solver must not see). Parsed by `grader/schema.py` (`GraderConfig.from_yaml`).
+- `grader-data/` (optional): files for the grader to use. `mounts[].source` paths resolve against this directory (default `<task>/grader-data/`), and it is pushed into the DTU after the agent finishes.
 - `workspace/` (optional): files seeded into the agent's working directory at start.
 
-Two tasks ship today: `cpsc_recall_monitor` (easy) and `chiptune_generator` (hard).
+The `amplifier-benchmark/tasks/` dataset ships 27 tasks today, each tagged `easy`/`medium`/`hard` in `meta.yaml` (e.g. `cpsc_recall_monitor` is easy, `chiptune_generator` is hard). Tasks are parsed into a `TaskSpec` by `harness/loaders.py` (`load_task`, `discover_tasks`); see `harness/schema.py` for the field set.
 
 ## Agents
 
@@ -80,13 +80,15 @@ asyncio.run(main())
 
 ## Grader
 
-`Grader` is a Foundation session that audits an agent's work inside a DTU against a `grader.yaml` rubric. Like the AI User it uses `bash` + `amplifier-digital-twin exec` to explore the DTU (no Python transport layer). For each `evaluation` in the grader.yaml it runs a single multi-turn session with three phases:
+`Grader` is a Foundation session that audits an agent's work inside a DTU against a `grader.yaml` rubric. Like the AI User it uses `bash` + `amplifier-digital-twin exec` to explore the DTU (no Python transport layer). The evaluations in a grader.yaml run concurrently (`asyncio.gather`); each is a single multi-turn session with three phases:
 
 1. Explore the DTU and write a free-text initial report.
 2. Submit the structured rubric via the `submit_rubric` tool, whose JSON input schema is dynamically generated from the evaluation's rubric (exact criterion keys, per-criterion max points).
 3. If validation fails, ask for fixes (max 2 retries).
 
-The final score is the weighted sum of per-evaluation scores. Per-evaluation artifacts (`initial_report.md`, `rubric.json`) land in `output_dir/<evaluation_name>/`, plus a top-level `grader_result.json`.
+Before phase 1, any `mounts` declared on the evaluation are pushed into the DTU: each `source` is resolved against `grader_data_dir` (the `run(grader_data_dir=...)` argument, defaulting to the task's `grader-data/`) and copied to its `destination` inside the DTU. This is how an answer key reaches the grader without the solver ever seeing it.
+
+The final score is the weighted sum of per-evaluation scores. Per-evaluation artifacts (`initial_report.md`, `rubric.json`) land in `output_dir/<evaluation_name>/`, plus a top-level `grader_result.json`. See `grader/grader.py` (`Grader.run`, `_push_mounts`) and `grader/schema.py` for the authoritative contract.
 
 Minimal usage:
 
@@ -159,7 +161,7 @@ asyncio.run(main())
 
 The harness in `src/amplifier_evaluation/harness/` is a flat set of modular pieces: `loaders`, `dtu`, `install`, `state`, `trial`, `scheduler`, and `events`. Each has a single responsibility and a small typed contract, so consumers compose what they need: load tasks and agents from disk, wrap the DTU CLI from Python, install an agent into a running DTU, run one trial end to end, schedule many trials in parallel, print a flat per-trial event log, or persist trial state for resumability. Together they orchestrate AI User, Extractor, and Grader across many `(agent, task, trial)` combinations: per trial they launch a Digital Twin Universe instance, install the agent, seed the workspace, drive the agent through the AI User, extract artifacts to the host, run the grader, and destroy the DTU. Parallelism is capped by a semaphore so a batch of trials can run concurrently without saturating the host. Every state transition is written atomically to a per-trial `state.json`, so a crashed harness can be re-run and resume, an external observer can read live progress without the harness emitting events, and an operator can write `cancel_requested` or `retry_requested` to that file to course-correct a multi-day run.
 
-As one worked example, the package ships an assembled `run()` entry point that wires every brick together with sensible defaults. It is intentionally short and meant to be copied and edited; consumers with different needs should treat it as a template, not a fixed API.
+As one worked example, the package ships an assembled `run()` entry point (`harness/run.py`) that wires every brick together with sensible defaults. It is intentionally short and meant to be copied and edited; consumers with different needs should treat it as a template, not a fixed API. `run()` also accepts `launch_variables` (forwarded to `amplifier-digital-twin launch --var`, e.g. the `SWE_REPO`/`SWE_COMMIT` values examples 03 and 04 inject) and an optional `run_id`.
 
 Minimal usage:
 

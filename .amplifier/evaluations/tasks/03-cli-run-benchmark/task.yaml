@@ -1,0 +1,17 @@
+instructions: |
+  I want to try the amplifier-evaluation CLI. It ships with a built-in
+  amplifier-benchmark suite. Please use the CLI to run two of those built-in
+  benchmark tasks against the amplifier-foundation agent and show me the
+  results.
+
+  Run these two built-in tasks:
+    - arxiv_conclusion_extraction
+    - cpsc_recall_monitor
+
+  Run them for the amplifier-foundation agent, one trial each, in parallel (two
+  at a time). The tasks are built into the CLI, so you should not need to point
+  it at any task directory. Write the run output under
+  /workspace/eval-output/benchmark-results.
+
+  When it finishes, tell me where the results landed and whether each task
+  produced a result.
