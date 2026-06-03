@@ -1,0 +1,34 @@
+requires:
+  env:
+    - ANTHROPIC_API_KEY
+
+# Runs inside the launched task DTU via `bash -lc`, after the profile's
+# provision stage. amplifier-foundation is added from its public GitHub URL;
+# the task profile's url_rewrites transparently redirect that clone to the
+# per-trial Gitea mirror (with- or without-explorer) and inject admin auth.
+# context-intelligence is installed straight from GitHub (no mirror needed).
+setup_cmds:
+  - export PATH="/root/.local/bin:$PATH"; uv tool install git+https://github.com/microsoft/amplifier
+
+  # Provider config. Unquoted EOF expands $ANTHROPIC_API_KEY (provided via the
+  # profile's passthrough.services) into the file at install time.
+  - |
+    mkdir -p /root/.amplifier
+    cat > /root/.amplifier/settings.yaml <<EOF
+    config:
+      providers:
+        - module: provider-anthropic
+          source: git+https://github.com/microsoft/amplifier-module-provider-anthropic@main
+          config:
+            api_key: $ANTHROPIC_API_KEY
+    EOF
+
+  # Foundation @main -> rewritten to the per-trial mirror's main branch.
+  - export PATH="/root/.local/bin:$PATH"; amplifier bundle add git+https://github.com/microsoft/amplifier-foundation@main --app
+
+  # context-intelligence supplies the session event hook (events.jsonl), the
+  # source of the root-context token / delegation metrics this eval compares.
+  - export PATH="/root/.local/bin:$PATH"; amplifier bundle add git+https://github.com/microsoft/amplifier-bundle-context-intelligence@main
+
+  - export PATH="/root/.local/bin:$PATH"; amplifier --version
+  - export PATH="/root/.local/bin:$PATH"; amplifier bundle list | tee /tmp/bundle-list.txt

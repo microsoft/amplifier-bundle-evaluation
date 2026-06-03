@@ -1,0 +1,43 @@
+name: eval01-explorer-context-sink
+description: >
+  Ubuntu 24.04 with uv + git. Clones microsoft/agent-framework into
+  /workspace/agent-framework for the exploration prompt. Redirects
+  amplifier-foundation clones to a Gitea mirror repo selected PER TRIAL via the
+  FOUNDATION_REPO launch variable -- amplifier-foundation-with-explorer or
+  amplifier-foundation-without-explorer. Both mirror repos carry the desired
+  state on their `main` branch, so the agent's `bundle add ...@main` resolves
+  correctly under Amplifier's default-branch re-resolution.
+
+base:
+  image: ubuntu:24.04
+
+# Branch is always @main; the VARIANT is the target repo, set per trial.
+url_rewrites:
+  auth:
+    username: admin
+    token_var: GITEA_TOKEN
+  rules:
+    - match: github.com/microsoft/amplifier-foundation
+      target: ${GITEA_URL}/admin/${FOUNDATION_REPO}
+
+passthrough:
+  allow_external: true
+  services:
+    - name: anthropic
+      key_env: ANTHROPIC_API_KEY
+
+provision:
+  setup_cmds:
+    - apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates tmux && rm -rf /var/lib/apt/lists/*
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - mkdir -p /workspace
+    # The target repo for the exploration prompt. Shallow clone is enough.
+    - git clone --depth 1 https://github.com/microsoft/agent-framework /workspace/agent-framework
+
+readiness:
+  - name: uv-installed
+    command: "PATH=/root/.local/bin:$PATH uv --version"
+  - name: workspace-exists
+    command: "test -d /workspace && echo OK"
+  - name: agent-framework-cloned
+    command: "test -d /workspace/agent-framework/.git && echo OK"

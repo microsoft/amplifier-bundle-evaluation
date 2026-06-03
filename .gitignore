@@ -41,3 +41,20 @@ examples/*/results/
 
 # Benchmark runs from scripts/run_benchmark.py
 results/
+
+# Benchmark task data is fetched from HuggingFace at runtime by each example's
+# run.sh (HLE is a gated dataset; SWE-bench grader-data holds the gold patch and
+# test_patch -- i.e. the answers). It must NEVER be committed. The task
+# DEFINITIONS (meta/task/profile/grader.yaml) and samplers stay tracked; only the
+# populated workspace/ and grader-data/ contents are ignored. Scoped to the
+# benchmark examples so future examples can still ship committed workspace
+# fixtures (as .amplifier/evaluations/ does).
+examples/02-hle-foundation/tasks/*/workspace/*
+examples/02-hle-foundation/tasks/*/grader-data/*
+examples/03-swebench-multimodal-foundation/tasks/*/workspace/*
+examples/03-swebench-multimodal-foundation/tasks/*/grader-data/*
+examples/04-foundation-vs-dev-demo/tasks/*/workspace/*
+examples/04-foundation-vs-dev-demo/tasks/*/grader-data/*
+# ...but keep the placeholder .gitkeep so the dirs exist in a fresh clone.
+!examples/*/tasks/*/workspace/.gitkeep
+!examples/*/tasks/*/grader-data/.gitkeep

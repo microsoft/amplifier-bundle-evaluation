@@ -1,0 +1,7 @@
+name: swebench-3
+description: >
+  SWE-bench Multimodal task 3 of 3 (pinned instance). Resolved off-the-shelf;
+  graded by the official swebench Docker harness (resolved / unresolved).
+difficulty: hard
+categories: [benchmark, swebench, swebench-multimodal, code-patch]
+timeout: 2700

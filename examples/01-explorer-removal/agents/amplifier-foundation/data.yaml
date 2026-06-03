@@ -1,0 +1,13 @@
+# Extraction hint. The agent runs from /workspace, so its sessions live under
+# the `-workspace` project slug. Pull the FULL session tree: when the explorer
+# agent is present the root delegates to a sub-session, and the comparator
+# needs the ROOT session's events.jsonl to measure root-context tokens.
+session_data:
+  base_path: /root/.amplifier/projects/-workspace/sessions/{session_id}
+  files:
+    - transcript.jsonl
+    - metadata.json
+    - events.jsonl
+
+workspace:
+  path: /workspace

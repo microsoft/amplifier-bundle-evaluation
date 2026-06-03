@@ -1,0 +1,14 @@
+name: swebench
+description: >
+  A single pinned SWE-bench Multimodal (dev split) GitHub issue, resolved
+  off-the-shelf by amplifier-foundation. The agent edits a cloned repo to fix
+  the issue; the grader runs the official `swebench` Docker harness on the
+  extracted patch and scores resolved / unresolved (every FAIL_TO_PASS test
+  passes AND every PASS_TO_PASS test still passes).
+difficulty: hard
+categories:
+  - benchmark
+  - swebench
+  - swebench-multimodal
+  - code-patch
+timeout: 2700

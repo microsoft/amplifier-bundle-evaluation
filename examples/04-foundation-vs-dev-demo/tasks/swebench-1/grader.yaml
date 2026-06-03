@@ -1,0 +1,62 @@
+# Grader for the SWE-bench Multimodal benchmark task.
+#
+# The authoritative verdict is PROGRAMMATIC: the official `swebench` Docker
+# harness applies the solver's patch + the dataset's hidden test_patch and runs
+# the project test suite. The grader (1) extracts the solver's patch from the
+# DTU, (2) runs the official harness via the kept helper `swebench/grade.py`,
+# and (3) awards the single point iff the harness reports `resolved: true`.
+#
+# The harness runs on the HOST (it needs the host Docker daemon), not via the
+# DTU exec wrapper. `swebench/grade.py` and the instance.json path are resolved
+# relative to the harness process cwd (the example directory -- run.sh cd's there).
+# All host temp paths are suffixed with the DTU id so multiple swebench tasks
+# grading in parallel do not clobber each other.
+
+evaluations:
+  - name: swebench-resolved
+    weight: 1.0
+    steps: |
+      Determine whether the solver resolved the GitHub issue, using the official
+      SWE-bench Docker harness. Follow these steps exactly. Most commands run on
+      the HOST (no exec wrapper); only step 1 reaches into the DTU.
+
+      IMPORTANT: wherever you see <dtu_id> below, substitute the ACTUAL DTU id
+      shown above. The temp paths are suffixed with it so that concurrent
+      gradings of other tasks do not collide -- do not use bare /tmp/swebench-grade.
+
+      1. Extract the solver's patch from the DTU to a host file. The agent edited
+         /workspace/repo; capture its diff (including new files):
+           amplifier-digital-twin exec <dtu_id> -- bash -c 'cd /workspace/repo && git add -N . && git diff' > /tmp/model_patch-<dtu_id>.diff
+         Inspect it: `wc -c /tmp/model_patch-<dtu_id>.diff`. An empty patch means
+         the solver changed nothing (the issue will be unresolved), but still run
+         the harness in step 2 to produce an authoritative verdict.
+
+      2. Run the official harness via the kept helper. It pulls a per-instance
+         Docker image and runs the project test suite, which can take 5-20
+         minutes -- so launch it in the BACKGROUND with a sentinel and POLL.
+         Do NOT run it as one blocking command (it will time out):
+           rm -rf /tmp/swebench-grade-<dtu_id> /tmp/swebench-grade-<dtu_id>.done /tmp/swebench-grade-<dtu_id>.log
+           nohup bash -lc 'uv run --quiet --with swebench python3 swebench/grade.py --instance tasks/swebench-1/grader-data/instance.json --patch /tmp/model_patch-<dtu_id>.diff --output /tmp/swebench-grade-<dtu_id> > /tmp/swebench-grade-<dtu_id>.log 2>&1; echo "EXIT:$?" > /tmp/swebench-grade-<dtu_id>.done' >/dev/null 2>&1 &
+           echo launched
+         Then poll, sleeping ~30s between checks, until the sentinel appears (be
+         patient, up to ~25 minutes):
+           if [ -f /tmp/swebench-grade-<dtu_id>.done ]; then echo "DONE $(cat /tmp/swebench-grade-<dtu_id>.done)"; else echo RUNNING; tail -c 400 /tmp/swebench-grade-<dtu_id>.log 2>/dev/null; fi
+         Do NOT proceed while it prints RUNNING.
+
+      3. Read the authoritative verdict written by the harness helper:
+           cat /tmp/swebench-grade-<dtu_id>/verdict.json
+         The "resolved" boolean is the official result (true iff every
+         FAIL_TO_PASS test passes AND every PASS_TO_PASS test still passes). The
+         "status" object has the per-test success/failure lists for your report.
+
+      4. Score: award the point iff "resolved" is true. If grade.py failed (the
+         sentinel shows a non-zero EXIT, or verdict.json does not exist), award 0
+         and note the harness failure.
+    rubric:
+      issue_resolved:
+        points: 1
+        description: >
+          The official SWE-bench harness reports resolved=true for the solver's
+          patch (every FAIL_TO_PASS test passes AND every PASS_TO_PASS test still
+          passes). Score 0 if unresolved, the patch is empty, or the harness did
+          not produce a verdict.

@@ -1,0 +1,6 @@
+name: amplifier-foundation
+description: >
+  Variant "foundation": Amplifier CLI with amplifier-foundation @ main composed,
+  installed from GitHub. The baseline in the foundation-vs-dev comparison. Both
+  variants pin Opus via the opus48 routing matrix so the only difference between
+  them is the composed bundle, not the model.

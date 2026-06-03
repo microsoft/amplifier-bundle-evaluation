@@ -1,0 +1,7 @@
+# Placeholder so this directory exists in a fresh clone.
+#
+# RUNTIME-POPULATED, DO NOT COMMIT. This example's run.sh writes the grader's
+# benchmark data here at runtime (HLE reference.json = the ground-truth answer;
+# SWE-bench instance.json = the gold patch + test_patch). These ARE the answers,
+# so they must never be committed. Everything here EXCEPT this .gitkeep is
+# gitignored. Never `git add -f` the populated contents.

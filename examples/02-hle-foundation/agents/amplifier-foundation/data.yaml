@@ -1,0 +1,18 @@
+# Extraction hint. The agent runs from /workspace, so its sessions live under
+# the `-workspace` project slug. Pull the full session tree so the run can be
+# inspected after the fact (the grader scores from the DTU directly; this is
+# for post-hoc analysis).
+session_data:
+  base_path: /root/.amplifier/projects/-workspace/sessions/{session_id}
+  files:
+    - transcript.jsonl
+    - metadata.json
+    - events.jsonl
+
+workspace:
+  path: /workspace
+  # The ONLY deliverable for this task is answer.txt. Pull just that file.
+  # Do NOT recursively pull /workspace -- it also holds the staged question
+  # and scratch files that are not needed for analysis.
+  deliverables:
+    - answer.txt

@@ -1,0 +1,45 @@
+# Grader for the HLE benchmark task.
+#
+# One evaluation that judges the solver's FINAL answer against the dataset's
+# ground-truth reference answer, using HLE's published judge criteria. The
+# reference answer is pushed into the DTU via `mounts` (it must NOT be visible
+# to the solver, so it is supplied only here through grader-data, never the task
+# workspace). The grader reads the solver's answer.txt and the reference, then
+# scores a single point: correct or not.
+
+evaluations:
+  - name: hle-answer-correctness
+    weight: 1.0
+    mounts:
+      - source: reference.json
+        destination: /grader/reference.json
+    steps: |
+      Judge whether the solver's final answer to the HLE question is correct,
+      using the dataset's ground-truth reference answer. You are ONLY checking
+      equivalence to the correct answer -- do NOT try to solve the problem
+      yourself, and do not argue for any answer other than the reference.
+
+      1. Read the solver's answer file from inside the DTU:
+           amplifier-digital-twin exec <dtu_id> -- cat /workspace/answer.txt
+         If the file is missing or empty, the solver produced no answer -> award
+         0 points.
+      2. Read the ground-truth reference (pushed in for you) from inside the DTU:
+           amplifier-digital-twin exec <dtu_id> -- cat /grader/reference.json
+         It is JSON with fields: "question", "answer" (the correct answer), and
+         "answer_type".
+      3. Extract the solver's final answer: the text after the LAST line that
+         begins with "ANSWER:". If there is no such line, try to extract a single
+         final exact answer from the file; if none can be extracted, award 0.
+      4. Compare the extracted answer to the reference "answer". Award the point
+         only if the extracted answer matches the correct answer, or is within a
+         small margin of error for numerical problems. Do NOT award the point if
+         there is any inconsistency, ambiguity, non-equivalency, or if the
+         extracted answer is incorrect.
+    rubric:
+      answer_correct:
+        points: 1
+        description: >
+          The solver's extracted final answer matches the dataset's ground-truth
+          reference answer per HLE judge criteria (exact match, or within a small
+          margin for numeric answers). Score 0 if the answer file is missing or
+          empty, the answer is ambiguous or unextractable, or the answer is wrong.

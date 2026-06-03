@@ -1,0 +1,16 @@
+instructions: |
+  I have a question I would like you to answer for me to the best of your ability.
+
+  The question is in the file 'question.md' in the current directory. If a file
+  named 'question_image.<ext>' is also present in the current directory, an image
+  is provided for this question -- examine it as part of your work.
+
+  Write the final answer to 'answer.txt' in the current directory. The file must
+  have a clear, definitive final answer on the last line, formatted as:
+  ANSWER: <your answer>
+
+  You should write tools, run code, and so forth where appropriate to figure out
+  the answer, but DO NOT search the web or explore files outside of your current
+  directory.
+
+  The answer must be precise and unambiguous.

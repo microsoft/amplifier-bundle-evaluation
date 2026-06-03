@@ -1,0 +1,54 @@
+# Grader for the explorer-removal exploration task.
+#
+# One evaluation scoring the solver's FINAL exploration answer for whether it
+# correctly explains provider switching in agent-framework, backed by valid
+# citations. The same rubric applies to both variants (with / without the
+# explorer agent); the harness's metric comparison -- not this grader -- is
+# what surfaces the context-sink effect. This grader answers a different
+# question: did removing the explorer degrade ANSWER QUALITY?
+
+evaluations:
+  - name: provider-switching-answer-quality
+    weight: 1.0
+    steps: |
+      Score the solver's final exploration answer for whether it correctly
+      explains how agent-framework switches between AI providers, with valid
+      file:line citations.
+
+      1. Locate the solver's ROOT session dir under
+         `/root/.amplifier/projects/-workspace/sessions/`. If more than one
+         session dir exists (the explorer agent runs in a SUB-session), the
+         ROOT is the session whose `metadata.json` has no parent (no
+         `parent_id` / `parent_session_id`, or an `is_sub_session` of false).
+         If still ambiguous, use the most recently modified root session.
+      2. Read that session's `transcript.jsonl` and find the LAST line whose
+         `role` is `assistant`. Extract its text:
+            - if `content` is a string, use it directly
+            - if `content` is a list of blocks, concatenate the `text` field of
+              every block whose `type` is `text`
+         Strip ANSI escape sequences (`\x1b\[[0-9;]*m`).
+      3. To verify citations, read the referenced files under
+         `/workspace/agent-framework` at the cited paths and line ranges.
+      4. Score each criterion strictly from the final answer. If unsure, `no`.
+    rubric:
+      J1_provider_abstraction_identified:
+        points: 1
+        description: >
+          The answer identifies agent-framework's provider abstraction -- the
+          common interface, base class, or protocol that the OpenAI and
+          Anthropic backends both implement. Naming the concrete abstraction
+          counts. A vague "it supports multiple providers" with no named
+          mechanism does NOT count.
+      J2_switching_mechanism_explained:
+        points: 1
+        description: >
+          The answer explains HOW a caller switches providers -- e.g.
+          constructing or selecting a different client/connector, or a config
+          or factory mechanism -- not merely that switching is possible.
+      J3_citations_valid:
+        points: 1
+        description: >
+          The answer includes file:line citations as evidence AND the cited
+          files exist under /workspace/agent-framework at the given paths and
+          plausibly support the claim. Score `no` if there are no citations, or
+          if the cited paths do not exist in the repo.

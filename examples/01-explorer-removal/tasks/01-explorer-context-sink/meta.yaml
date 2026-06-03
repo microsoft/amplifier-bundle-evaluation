@@ -1,0 +1,14 @@
+name: 01-explorer-context-sink
+description: >
+  A real code-exploration task used to measure the contribution of the
+  foundation:explorer agent. The same prompt runs against foundation WITH and
+  WITHOUT the explorer agent (selected per trial by the harness). The
+  comparison shows the explorer acting as a context sink -- it absorbs the
+  token cost of exploration in a sub-session, keeping the root context lean --
+  rather than a latency optimization.
+difficulty: medium
+categories:
+  - delegation
+  - context-sink
+  - exploration
+timeout: 1800
