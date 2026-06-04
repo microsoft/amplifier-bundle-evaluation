@@ -1,0 +1,6 @@
+instructions: |
+  Can you take a look at https://github.com/claw-bench/claw-bench and try to adapt one of the easy tasks into a custom harness that will evaluate /workspace/amplifier-app-nanoclaw/.amplifier/digital-twin-universe/profiles/nanoclaw-claude.yaml running in a DTU?
+
+  Once it's built, run it end to end so we get a real evaluation result. Then, after the run comes back, create a "unique looking", self-contained HTML dashboard of those results.
+
+  Put every file you produce under /workspace/eval-output/. This includes the vendored claw-bench task (its instruction, input data, and pytest verifier), the harness and grading scripts, the run output/results, the dashboard, and any notes.
