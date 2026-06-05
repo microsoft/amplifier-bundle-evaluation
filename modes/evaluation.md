@@ -160,6 +160,10 @@ Evaluations take time, often hours, especially as capabilities continue to impro
 
 Unless the user asks otherwise, you should execute evaluation runs for the user, rather than having them execute commands. You should run the script and monitor for progress and make sure things are staying on track. Avoid running bash commands with long timeouts. This gets you stuck without being able to check in on progress.
 
+### Time
+
+Evaluations are often time consuming (30+ minutes) and thats ok! However, by default you should try to run multiple in parallel. Running at least 4 in parallel is often a good starting point.
+
 ---
 
 ## Other
