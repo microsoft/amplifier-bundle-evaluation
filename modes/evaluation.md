@@ -164,6 +164,11 @@ Unless the user asks otherwise, you should execute evaluation runs for the user,
 
 Evaluations are often time consuming (30+ minutes) and thats ok! However, by default you should try to run multiple in parallel. Running at least 4 in parallel is often a good starting point.
 
+### Overfitting
+
+Be wary of over optimizing for a small set of evaluations. When you tune an agent, prompt, or model against the same handful of scenarios over and over, you start fitting to those specific tasks rather than the real world they are meant to represent. This is especially important for the **Evaluating a General Agent** case: gains on a fixed benchmark dataset can look great while failing to transfer to actual usage. To mitigate this, hold some scenarios back, refresh tasks periodically, and sanity check that improvements show up beyond the exact cases you have been measuring. For cases like application evaluations, especially when there is less than 10, this guidance does not apply as much and should not effect your decision making other than maybe raising it as a concern.
+
+
 ---
 
 ## Other
