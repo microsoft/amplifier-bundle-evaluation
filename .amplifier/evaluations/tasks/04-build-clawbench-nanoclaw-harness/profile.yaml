@@ -1,0 +1,160 @@
+# DTU profile for the "build a claw-bench -> nanoclaw harness" meta-eval.
+#
+# A DTU *host* profile: it installs Incus (inner container runtime) + Docker so
+# the agent under test can actually LAUNCH nested DTUs and run the harness it
+# builds against the nanoclaw-claude profile (DTU-in-DTU), not just write files.
+# The nested-DTU host stack is the same one 01-evaluate-amplifier-bundle uses,
+# adapted from amplifier-bundle-digital-twin-universe's dtu-host-in-incus.yaml.
+#
+# This task additionally clones amplifier-app-nanoclaw into /workspace so the
+# nanoclaw-claude.yaml profile the prompt references actually exists in the
+# environment. claw-bench is intentionally NOT pre-cloned: fetching and
+# exploring it from GitHub is part of the task the agent is being graded on.
+#
+# Split of responsibilities:
+#   - This profile installs OS-level infra (Incus + Docker daemons, uv, tmux,
+#     git) and seeds /workspace/amplifier-app-nanoclaw. It does NOT install
+#     Amplifier or compose bundles.
+#   - The shared amplifier-evalbundle agent's install.yaml installs Amplifier +
+#     foundation + amplifier-bundle-evaluation + the amplifier-digital-twin /
+#     amplifier-gitea CLIs and bundles so the agent can drive nested DTUs.
+#
+# url_rewrites redirects amplifier-bundle-evaluation clones to a local Gitea
+# mirror whose `main` branch is the local branch HEAD the wrapper
+# (.amplifier/evaluations/run.sh) deployed. GITEA_URL + GITEA_TOKEN are
+# threaded by the wrapper via --launch-var.
+
+name: eval04-clawbench-nanoclaw-harness
+description: >
+  Ubuntu 24.04 DTU host with Incus + Docker + uv + tmux, plus a clone of
+  amplifier-app-nanoclaw in /workspace (so the nanoclaw-claude profile exists).
+  Lets the agent under test launch a nested nanoclaw DTU and actually run the
+  harness it builds. Redirects amplifier-bundle-evaluation clones to a local
+  Gitea mirror.
+
+base:
+  image: ubuntu:24.04
+
+url_rewrites:
+  auth:
+    username: admin
+    token_var: GITEA_TOKEN
+  rules:
+    - match: github.com/microsoft/amplifier-bundle-evaluation
+      target: ${GITEA_URL}/admin/amplifier-bundle-evaluation
+
+passthrough:
+  allow_external: true
+  services:
+    - name: anthropic
+      key_env: ANTHROPIC_API_KEY
+
+provision:
+  setup_cmds:
+    # --- Common prereqs (+ tmux for the AIUser's persistent TUI driving) ---
+    - |
+      set -euo pipefail
+      export DEBIAN_FRONTEND=noninteractive
+      timeout 180 apt-get update
+      timeout 300 apt-get install -y ca-certificates curl gnupg git tmux
+
+    # --- Incus via Zabbly stable repo (noble = Ubuntu 24.04) ----------
+    - |
+      set -euo pipefail
+      install -m 0755 -d /etc/apt/keyrings
+      timeout 30 curl -fsSL --max-time 20 \
+        https://pkgs.zabbly.com/key.asc \
+        -o /etc/apt/keyrings/zabbly.asc
+      chmod a+r /etc/apt/keyrings/zabbly.asc
+      ARCH=$(dpkg --print-architecture)
+      cat > /etc/apt/sources.list.d/zabbly-incus-stable.sources <<EOF
+      Enabled: yes
+      Types: deb
+      URIs: https://pkgs.zabbly.com/incus/stable
+      Suites: noble
+      Components: main
+      Architectures: ${ARCH}
+      Signed-By: /etc/apt/keyrings/zabbly.asc
+      EOF
+
+    # --- Docker CE apt repo -------------------------------------------
+    - |
+      set -euo pipefail
+      timeout 30 curl -fsSL --max-time 20 \
+        https://download.docker.com/linux/ubuntu/gpg \
+        -o /etc/apt/keyrings/docker.asc
+      chmod a+r /etc/apt/keyrings/docker.asc
+      ARCH=$(dpkg --print-architecture)
+      CODENAME=$(. /etc/os-release && echo "${VERSION_CODENAME}")
+      echo "deb [arch=${ARCH} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${CODENAME} stable" \
+        > /etc/apt/sources.list.d/docker.list
+
+    # --- Install both stacks in a single apt transaction --------------
+    - |
+      set -euo pipefail
+      export DEBIAN_FRONTEND=noninteractive
+      timeout 180 apt-get update
+      timeout 600 apt-get install -y \
+        incus incus-base incus-client \
+        docker-ce docker-ce-cli containerd.io
+
+    # --- Ensure both daemons are up via systemd -----------------------
+    - |
+      set -euo pipefail
+      if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
+        timeout 30 systemctl enable --now incus.socket incus.service
+        timeout 30 systemctl enable --now docker.service
+      else
+        nohup incusd  >/var/log/incusd.log  2>&1 &
+        nohup dockerd >/var/log/dockerd.log 2>&1 &
+      fi
+      for i in $(seq 1 60); do
+        [ -S /var/lib/incus/unix.socket ] && [ -S /var/run/docker.sock ] && break
+        sleep 1
+      done
+      if [ ! -S /var/lib/incus/unix.socket ]; then
+        echo "ERROR: Incus socket missing at /var/lib/incus/unix.socket"
+        (journalctl -u incus --no-pager -n 100 2>/dev/null) || true
+        exit 1
+      fi
+      if [ ! -S /var/run/docker.sock ]; then
+        echo "ERROR: Docker socket missing at /var/run/docker.sock"
+        (journalctl -u docker --no-pager -n 100 2>/dev/null) || true
+        exit 1
+      fi
+      echo "Both sockets up after ${i}s"
+
+    # --- Inner Incus: minimal init + privileged default profile -------
+    - timeout 60 incus admin init --minimal
+    - timeout 15 incus profile set default security.privileged=true
+
+    # --- Install uv (adds ~/.local/bin to ~/.profile) -----------------
+    - |
+      set -euo pipefail
+      timeout 60 curl -LsSf --max-time 45 https://astral.sh/uv/install.sh | sh
+
+    - mkdir -p /workspace
+
+    # --- Seed the nanoclaw app so the referenced profile exists -------
+    # The prompt points at
+    # /workspace/amplifier-app-nanoclaw/.amplifier/digital-twin-universe/profiles/nanoclaw-claude.yaml
+    - |
+      set -euo pipefail
+      timeout 180 git clone --depth 1 \
+        https://github.com/manojp99/amplifier-app-nanoclaw.git \
+        /workspace/amplifier-app-nanoclaw
+      test -f /workspace/amplifier-app-nanoclaw/.amplifier/digital-twin-universe/profiles/nanoclaw-claude.yaml
+
+readiness:
+  - name: incus-daemon
+    command: "incus info >/dev/null 2>&1"
+  - name: default-profile-privileged
+    command: "incus profile show default | grep -q 'security.privileged: \"true\"'"
+  - name: docker-daemon
+    command: "docker info >/dev/null 2>&1"
+  - name: uv-installed
+    command: "PATH=/root/.local/bin:$PATH uv --version"
+  - name: workspace-exists
+    command: "test -d /workspace && echo OK"
+  - name: nanoclaw-profile-present
+    command: "test -f /workspace/amplifier-app-nanoclaw/.amplifier/digital-twin-universe/profiles/nanoclaw-claude.yaml && echo OK"

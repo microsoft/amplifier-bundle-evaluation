@@ -1,0 +1,20 @@
+name: 04-build-clawbench-nanoclaw-harness
+description: >
+  Hand the /evaluation mode a realistic "adapt an easy claw-bench task into a
+  custom harness that evaluates the nanoclaw-claude DTU profile" prompt, and
+  measure whether it builds a CORRECT, WORKING harness. Unlike
+  01-evaluate-amplifier-bundle (which only checks that some harness artifacts
+  exist), this grades whether the harness gets the hard, app-specific details
+  right -- vendoring a real claw-bench task plus its pytest verifier, driving
+  nanoclaw correctly (poll the produced deliverable, NOT the chat return),
+  grading programmatically, actually running end to end with a trustworthy
+  score, and then producing a unique-looking dashboard of the results.
+difficulty: hard
+categories:
+  - meta-eval
+  - harness-scaffolding
+  - clawbench
+  - nanoclaw
+# Deep end-to-end work: nested-DTU host provision + a long multi-turn build
+# session + (stretch) an actual nested nanoclaw run. Allow 90 minutes.
+timeout: 5400

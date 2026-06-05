@@ -18,6 +18,7 @@ User-facing templates live in `examples/`; agent task benchmarks live in
     01-evaluate-amplifier-bundle/
     02-industry-benchmark-routing/
     03-cli-run-benchmark/
+    04-build-clawbench-nanoclaw-harness/
   results/<run-id>/            harness output (gitignored)
 ```
 
@@ -28,6 +29,7 @@ User-facing templates live in `examples/`; agent task benchmarks live in
 | 01-evaluate-amplifier-bundle | `/evaluation` mode scaffolds a usable harness when handed a new Amplifier bundle |
 | 02-industry-benchmark-routing | `/evaluation` mode routes a broad model-swap validation question to the amplifier-benchmark suite (starting with ~5 tasks) instead of suggesting custom one-off tasks |
 | 03-cli-run-benchmark | `/evaluation` mode drives the `amplifier-evaluation` CLI to actually run two benchmark tasks for the amplifier-foundation agent and emit result artifacts (nested DTU) |
+| 04-build-clawbench-nanoclaw-harness | `/evaluation` mode adapts an easy claw-bench task into a custom harness that evaluates the nanoclaw-claude DTU profile, graded on whether it gets the hard, app-specific details right (nested DTU) |
 
 Both evals exercise the same agent: an amplifier session with
 `amplifier-foundation` and `amplifier-bundle-evaluation` composed. They

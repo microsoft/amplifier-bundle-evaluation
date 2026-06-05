@@ -74,7 +74,7 @@ fi
 [ -n "${ANTHROPIC_API_KEY:-}" ] || die "ANTHROPIC_API_KEY not set and not in ~/.amplifier/keys.env"
 
 # ---- 1. selection --------------------------------------------------------
-ALL_TASKS=("01-evaluate-amplifier-bundle" "02-industry-benchmark-routing" "03-cli-run-benchmark")
+ALL_TASKS=("01-evaluate-amplifier-bundle" "02-industry-benchmark-routing" "03-cli-run-benchmark" "04-build-clawbench-nanoclaw-harness")
 SELECTED=()
 if [ "$#" -eq 0 ]; then
     SELECTED=("${ALL_TASKS[@]}")

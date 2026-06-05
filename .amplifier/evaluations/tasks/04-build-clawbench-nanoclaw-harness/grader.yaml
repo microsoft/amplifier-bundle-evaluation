@@ -1,0 +1,179 @@
+# Grader for the "build a claw-bench -> nanoclaw harness" meta-eval.
+#
+# Four substantive checks on what the /evaluation mode actually built. Unlike
+# 01-evaluate-amplifier-bundle (which only confirms harness ARTIFACTS exist),
+# this grades whether the harness is CORRECT for this specific, fiddly task --
+# it encodes the real pitfalls a naive attempt falls into. The rubric is
+# self-contained: each criterion's steps fully describe what a correct harness
+# must do, so a run can be graded on its own merits with no external reference.
+#
+#   1. vendored-clawbench-task     -- a real easy claw-bench task + its verifier
+#   2. drives-nanoclaw-correctly   -- seeds, drives, and detects completion the
+#                                     way nanoclaw actually requires
+#   3. programmatic-grading        -- scores with the claw-bench pytest verifier
+#   4. ran-end-to-end-trustworthy  -- actually executed it and produced a
+#                                     trustworthy score (stretch)
+#   5. produced-results-dashboard  -- after the run, a self-contained, accurate,
+#                                     distinctly styled HTML dashboard of it
+#
+# All inspection happens inside the DTU. The agent was told to put everything it
+# produces under /workspace/eval-output/. Weights sum to 1.0: build quality
+# (1-3) carries 0.65, actually running it (4) 0.20, and the results dashboard
+# (5) 0.15 -- so an excellent but un-executed harness still scores well while a
+# real run and a dashboard of it are each rewarded.
+
+evaluations:
+  - name: vendored-clawbench-task
+    weight: 0.20
+    steps: |
+      Decide whether the agent adapted a REAL claw-bench task -- including its
+      grader -- rather than inventing its own task from scratch.
+
+      claw-bench (https://github.com/claw-bench/claw-bench) ships tasks under
+      `tasks/<domain>/<task-id>/` where each task has an `instruction.md` (the
+      prompt), an `environment/` with input data, a `task.toml` (id, domain,
+      level), and a `verifier/` containing a pytest test (e.g. test_output.py)
+      with weighted `@pytest.mark.weight(n)` checks.
+
+      1. Recursively list /workspace/eval-output/ and read the relevant files.
+      2. Confirm the harness includes a claw-bench task that carries ALL of:
+         - the task instruction (what the agent-under-test must do),
+         - the input data the task operates on, and
+         - the original claw-bench pytest VERIFIER (the test file with
+           weight markers), vendored faithfully -- not a hand-written
+           re-implementation of the checks.
+      3. An easy (L1-ish) file/data task is expected. A task with no vendored
+         pytest verifier, or where the "verifier" is bespoke ad-hoc code that
+         does not match claw-bench's, does NOT count.
+      4. Score `yes` only if a genuine claw-bench task plus its own verifier is
+         present, otherwise `no`.
+    rubric:
+      vendored_clawbench_task:
+        points: 1
+        description: >
+          Did the agent vendor a real claw-bench task -- its instruction, its
+          input data, AND its original pytest verifier with weight markers --
+          rather than inventing an approximation of a claw-bench task?
+
+  - name: drives-nanoclaw-correctly
+    weight: 0.25
+    steps: |
+      Decide whether the harness drives the nanoclaw-claude DTU the way nanoclaw
+      actually works. This is the hard, app-specific part and the main signal.
+
+      Read the harness script(s) under /workspace/eval-output/. The harness must
+      target the nanoclaw-claude profile at
+      /workspace/amplifier-app-nanoclaw/.amplifier/digital-twin-universe/profiles/nanoclaw-claude.yaml
+      and exercise the nanoclaw AGENT (nanoclaw runs the model inside its own
+      container; the harness talks to it, it does not run the model directly).
+
+      Award the point only if the harness does ALL THREE of these correctly:
+      (a) SEEDS the task input into the location the nanoclaw agent can see
+          (its agent-group working directory / workspace inside the nanoclaw
+          environment), and discovers that location rather than hard-coding a
+          guess that cannot exist on a fresh launch.
+      (b) DRIVES the nanoclaw agent with the task (e.g. via its chat entry
+          point) and then HARVESTS the file the agent produced from that same
+          working directory.
+      (c) Detects completion CORRECTLY: it does NOT treat the chat/drive command
+          returning as "done" (nanoclaw's chat client returns almost
+          immediately, long before the agent finishes). Instead it POLLS for the
+          produced deliverable (and/or watches the agent container) with a
+          wall-clock timeout.
+
+      A harness that runs the model itself instead of driving nanoclaw, that
+      assumes the chat call blocks until completion, or that has no
+      seed/harvest path into the nanoclaw workspace, scores `no`.
+    rubric:
+      drives_nanoclaw_correctly:
+        points: 1
+        description: >
+          Does the harness drive the nanoclaw-claude DTU correctly -- seeding
+          input into and harvesting the deliverable from the nanoclaw agent's
+          workspace, and detecting completion by polling for the produced file
+          rather than treating the chat call's return as completion?
+
+  - name: programmatic-grading
+    weight: 0.20
+    steps: |
+      Decide whether the harness grades the harvested output with claw-bench's
+      own deterministic pytest verifier, not an ad-hoc or LLM-based check.
+
+      1. Read the grading portion of the harness under /workspace/eval-output/.
+      2. Confirm it runs the vendored claw-bench pytest verifier against the
+         file harvested from nanoclaw (e.g. `pytest .../verifier --workspace
+         <harvested-dir>` or an equivalent in-process pytest invocation), and
+         derives a score from the checks (ideally the claw-bench weighted score:
+         passed weighted points / total weighted points).
+      3. Grading that re-implements the checks by hand, or asks an LLM to judge
+         correctness instead of running the verifier, does NOT count.
+      4. Score `yes` only if the claw-bench pytest verifier is what produces the
+         score, otherwise `no`.
+    rubric:
+      programmatic_grading:
+        points: 1
+        description: >
+          Does the harness score the harvested output by running claw-bench's
+          own pytest verifier (deterministic, weighted), rather than an ad-hoc
+          re-implementation or an LLM judge?
+
+  - name: ran-end-to-end-trustworthy
+    weight: 0.20
+    steps: |
+      Decide whether the agent actually RAN the harness end to end against a
+      real nanoclaw-claude DTU and produced a trustworthy score -- not just
+      wrote code. This is a stretch goal (it requires launching a nested DTU).
+
+      1. Look for run output under /workspace/eval-output/ (or wherever the
+         harness writes results): a results/run directory, a run.json or
+         equivalent, captured logs, and a final score for the claw-bench task.
+      2. Confirm the run genuinely executed: a nanoclaw-claude DTU was launched,
+         the nanoclaw agent produced the deliverable, it was harvested, and the
+         claw-bench verifier scored it.
+      3. Confirm the result is TRUSTWORTHY, i.e. the harness guards against a
+         false positive from a stale/pre-existing deliverable -- for example it
+         launches a fresh DTU and/or clears the workspace before driving, so the
+         scored file is provably this run's output. A 100% that just graded a
+         leftover file does NOT count.
+      4. Score `yes` only if there is concrete evidence of a real, trustworthy
+         end-to-end run with a score, otherwise `no`. Writing the harness but
+         never running it scores `no` on THIS check only.
+    rubric:
+      ran_end_to_end_trustworthy:
+        points: 1
+        description: >
+          Did the agent actually run the harness end to end against a real
+          nanoclaw-claude DTU and produce a trustworthy score (with a guard
+          against grading a stale deliverable), rather than only writing the
+          harness?
+
+  - name: produced-results-dashboard
+    weight: 0.15
+    steps: |
+      Decide whether, AFTER running the evaluation, the agent produced a
+      self-contained HTML dashboard of the run's RESULTS -- not a generic
+      template, a raw data dump, or placeholder numbers.
+
+      1. Look under /workspace/eval-output/ for an HTML file that presents the
+         run's results (e.g. dashboard.html).
+      2. Open it and confirm BOTH:
+         - It is SELF-CONTAINED: it renders on its own (inline CSS/JS; it does
+           not depend on missing external image or script files).
+         - It ACCURATELY reflects THIS run's real results -- the claw-bench task
+           that was run, the score the harness produced, and the per-check
+           outcomes -- rather than invented or placeholder values. Cross-check
+           the numbers against the harness's own result output.
+      3. Confirm it has a deliberate, distinct visual design: a real layout with
+         a headline result, structure, and styling -- not an unstyled wall of
+         text or a dumped JSON blob.
+      4. Score `yes` only if a self-contained, accurate, deliberately styled
+         results dashboard exists, otherwise `no`. Writing the harness/results
+         but never producing such a dashboard scores `no` on THIS check only.
+    rubric:
+      produced_results_dashboard:
+        points: 1
+        description: >
+          After running the evaluation, did the agent produce a self-contained
+          HTML dashboard that accurately presents this run's real results with a
+          deliberate, distinct visual design (not a generic template, raw dump,
+          or placeholder numbers)?
