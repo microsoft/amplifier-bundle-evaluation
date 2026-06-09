@@ -187,6 +187,8 @@ asyncio.run(main())
 
 For the per-module breakdown, contracts, course-correction surface, and on-disk layout, see [`harness_modules.md`](harness_modules.md).
 
+When you run the same heavyweight DTU profile across many tasks (slow provisioning, or a profile that builds a Docker image and hits Docker Hub rate limits), bake the provisioning once into a reusable local Incus image and relaunch from it. See [`golden_image_caching.md`](golden_image_caching.md) for the two-profile convention, a baking snippet, and the gotchas (Incus version, registry mirror, Docker storage backend).
+
 ## Dependencies
 
 The package depends on `amplifier-core` and `amplifier-foundation`. For local development those are resolved from sibling submodules via `[tool.uv.sources]` in `pyproject.toml`. `uv sync` builds them from source the first time (amplifier-core has a Rust extension and takes a minute or two).

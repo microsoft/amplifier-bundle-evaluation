@@ -81,9 +81,10 @@ read_file file_path="@evaluation:context/workflow/brainstorm-scenarios.md"
 
 ## Automation
 
-Wrap the chosen scenarios in a runnable harness so anyone can run them, re-run them, and get comparable results. By default, set up a Digital Twin Universe profile per variant and capture all relevant data such as  stdout and session files.
+Wrap the chosen scenarios in a runnable harness so anyone can run them, re-run them, and get comparable results. By default, set up a Digital Twin Universe profile per variant and capture all relevant data such as stdout and session files.
 
 ```
+read_file file_path="@evaluation:context/workflow/overview.md"
 read_file file_path="@evaluation:context/workflow/harness-automation.md"
 ```
 
