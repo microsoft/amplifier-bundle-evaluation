@@ -34,8 +34,8 @@ dev = [
 ]
 
 [tool.uv.sources]
-amplifier-core = { path = "../amplifier-core", editable = true }
-amplifier-foundation = { path = "../amplifier-foundation", editable = true }
+amplifier-core = { git = "https://github.com/microsoft/amplifier-core", branch = "main" }
+amplifier-foundation = { git = "https://github.com/microsoft/amplifier-foundation", branch = "main" }
 
 [build-system]
 requires = ["hatchling"]
