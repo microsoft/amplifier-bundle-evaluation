@@ -12,6 +12,12 @@ You can see what the worked examples do: `examples/01-explorer-removal` drives t
 
 The library handles the lifecycle. The guardrails below are the expertise it does not enforce for you.
 
+## When a run uses a DTU, get it connected first
+
+DTUs are not required by this bundle, and the digital-twin-universe bundle may not be installed. But when a run does use one, nothing works until it launches and can reach what the scenario needs, and the failures here are environmental (Incus daemon or its VM not started, a profile's `url_rewrites` mitmproxy cert step failing, a Gitea mirror reachable from the host but not from inside the container). They surface one slow failed launch at a time.
+
+If the digital-twin-universe bundle is available, lean on it rather than reinventing this: delegate to the `digital-twin-universe:dtu-profile-builder` agent to build, launch, and verify a profile, or `load_skill(skill_name="digital-twin-universe")` to debug lifecycle and networking. Either way, smoke-test connectivity before a multi-trial run: launch one DTU, exec in, confirm the agent installs and can reach the Gitea mirror and provider API, then tear down. Presence checks (tools on PATH, keys set, Docker up) are not enough on their own.
+
 ## Where output goes, and never commit it
 
 A run directory captures `events.jsonl`, `transcript.jsonl`, stdout, profiles, and grader output. These can hold provider keys, full prompts and responses (including private repo content), absolute host paths, and the agent's complete reasoning trace. By default they must not be source controlled.
