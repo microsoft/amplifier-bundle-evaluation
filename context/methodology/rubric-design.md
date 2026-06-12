@@ -102,6 +102,15 @@ Before locking the rubric:
 
 If you do not have two example outputs, generate them: have an agent produce one quick first-pass attempt (the slop) and one careful attempt with all hints made explicit (the high-quality reference). Score both. Iterate.
 
+## Reading the result: watch for ceiling effects
+
+A comparison can only detect a difference when both runs have room to move on the scale. Before reporting a verdict, check where the scores fall on the scale, not just whether they differ.
+
+- **Equal scores near the top of the scale are inconclusive, not evidence that there is no difference.** If the control and treatment both score 0.95, that does not show the rubric failed to measure a difference. It shows the scores landed close to the maximum, with no room left to register one. Ask whether a clearly better run could have scored higher here. If it could not, the task or the rubric is too easy, and the result supports no conclusion either way. Treat equal high scores as a sign the task needs to be harder, not as a finding to report.
+- **Equal scores in the middle of the scale are a real result.** Two runs that both land near 0.6 on a hard task have been measured and found comparable, which is informative. A tie is only inconclusive when the scores sit at the top or bottom of the scale, where neither run had room to separate.
+
+This is the Step 6 calibration check applied to the live run rather than to two sample outputs. Step 6 checks that the rubric can separate strong work from weak work; this checks that the task left enough room on the scale for that separation to appear.
+
 ## Important Principles
 
 1. **Cut criteria that everyone passes.** If everything can ace a criterion, it does not belong in the rubric. The point allocation is better spent on something that actually matters to the user experience.
