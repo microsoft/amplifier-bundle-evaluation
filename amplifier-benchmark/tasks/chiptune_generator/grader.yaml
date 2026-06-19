@@ -48,6 +48,9 @@ evaluations:
 
   - name: functional
     weight: 0.65
+    mounts:
+      - source: analyze_midi.py
+        destination: /workspace/analyze_midi.py
     steps: |
       This stage validates that the tool actually works by generating MIDI files, analyzing them, and testing refinement. Since you cannot listen to audio, you will use programmatic MIDI analysis as a proxy for quality.
 
