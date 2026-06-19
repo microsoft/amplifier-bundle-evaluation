@@ -21,8 +21,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "amplifier-core", editable = "../amplifier-core" },
-    { name = "amplifier-foundation", editable = "../amplifier-foundation" },
+    { name = "amplifier-core", git = "https://github.com/microsoft/amplifier-core?branch=main" },
+    { name = "amplifier-foundation", git = "https://github.com/microsoft/amplifier-foundation?branch=main" },
     { name = "click", specifier = ">=8.0,<9.0" },
     { name = "pyyaml", specifier = ">=6.0,<7.0" },
 ]
@@ -36,7 +36,7 @@ dev = [
 [[package]]
 name = "amplifier-core"
 version = "1.6.0"
-source = { editable = "../amplifier-core" }
+source = { git = "https://github.com/microsoft/amplifier-core?branch=main#225b5d847efdbc8f3a36baa3cbf5035d72c3ce5f" }
 dependencies = [
     { name = "click" },
     { name = "pydantic" },
@@ -45,51 +45,13 @@ dependencies = [
     { name = "typing-extensions" },
 ]
 
-[package.metadata]
-requires-dist = [
-    { name = "click", specifier = ">=8.3.1" },
-    { name = "pydantic", specifier = ">=2.0" },
-    { name = "pyyaml", specifier = ">=6.0.3" },
-    { name = "tomli", specifier = ">=2.0" },
-    { name = "typing-extensions", specifier = ">=4.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "grpcio", specifier = ">=1.60" },
-    { name = "grpcio-tools", specifier = ">=1.60" },
-    { name = "maturin", specifier = ">=1.9" },
-    { name = "protobuf", specifier = ">=5.0" },
-    { name = "pytest", specifier = ">=8.4.2" },
-    { name = "pytest-asyncio", specifier = ">=1.3.0" },
-]
-
 [[package]]
 name = "amplifier-foundation"
 version = "1.0.0"
-source = { editable = "../amplifier-foundation" }
+source = { git = "https://github.com/microsoft/amplifier-foundation?branch=main#a174a3c55f19c4f71019329b783bbaa5f3554871" }
 dependencies = [
     { name = "amplifier-core" },
     { name = "pyyaml" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "amplifier-core", specifier = ">=1.0.10" },
-    { name = "grpcio", marker = "extra == 'grpc-adapter'", specifier = ">=1.78.0" },
-    { name = "protobuf", marker = "extra == 'grpc-adapter'", specifier = ">=4.0.0" },
-    { name = "pyyaml", specifier = ">=6.0.3" },
-]
-provides-extras = ["grpc-adapter"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "grpcio", specifier = ">=1.78.0" },
-    { name = "notebook", specifier = ">=7.5.0" },
-    { name = "protobuf", specifier = ">=4.0.0" },
-    { name = "pytest", specifier = ">=8.4.2" },
-    { name = "pytest-asyncio", specifier = ">=1.3.0" },
-    { name = "pytest-timeout", specifier = ">=2.3.0" },
 ]
 
 [[package]]
