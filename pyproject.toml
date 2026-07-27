@@ -31,6 +31,10 @@ amplifier-evaluation = "amplifier_evaluation.cli:main"
 dev = [
     "ruff",
     "pyright",
+    "pytest",
+    # amplifier-core ships a pytest plugin that imports pytest_asyncio at
+    # collection time, so it must be present for any pytest run.
+    "pytest-asyncio",
 ]
 
 [tool.uv.sources]

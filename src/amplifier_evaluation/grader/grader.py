@@ -21,6 +21,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import shlex
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
@@ -138,6 +139,35 @@ flagged; leave correct entries as they were.
 """
 
 
+async def _run_cli(args: list[str]) -> tuple[int, str, str]:
+    """Run one `amplifier-digital-twin` CLI invocation, return (rc, stdout, stderr)."""
+    proc = await asyncio.create_subprocess_exec(
+        *args,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await proc.communicate()
+    return (
+        proc.returncode or 0,
+        stdout.decode("utf-8", errors="replace"),
+        stderr.decode("utf-8", errors="replace"),
+    )
+
+
+def _file_push_args(dtu_id: str, src: Path, destination: str) -> list[str]:
+    """Build the `file-push` argv for one mount source.
+
+    The CLI requires `--recursive` when the source is a directory (without
+    it a directory push delivers nothing). It must be OMITTED for plain
+    files, where the CLI treats the destination as an exact file path.
+    """
+    args = ["amplifier-digital-twin", "file-push"]
+    if src.is_dir():
+        args.append("--recursive")
+    args.extend([dtu_id, str(src), destination])
+    return args
+
+
 async def _push_mounts(
     dtu_id: str,
     mounts: list,
@@ -147,8 +177,14 @@ async def _push_mounts(
 
     Each mount is resolved as `grader_data_dir / source` on the host and
     pushed to its `destination` inside the DTU via `amplifier-digital-twin
-    file-push`. Raises RuntimeError on the first failed push so the caller
-    can mark the evaluation as failed deterministically.
+    file-push`. Directory sources are pushed with `--recursive` and, per
+    the CLI's `cp -r` convention, land at `<destination>/<dirname>`.
+
+    Raises RuntimeError on the first failed push so the caller can mark
+    the evaluation as failed deterministically. Directory pushes are also
+    verified inside the DTU after the push: a push that "succeeds" but
+    delivers nothing raises instead of letting the grader score an empty
+    mount.
     """
     for m in mounts:
         src = (grader_data_dir / m.source).resolve()
@@ -158,22 +194,29 @@ async def _push_mounts(
                 f"(grader_data_dir={grader_data_dir}, source={m.source})"
             )
         logger.info("grader.mounts: pushing %s -> %s:%s", src, dtu_id, m.destination)
-        proc = await asyncio.create_subprocess_exec(
-            "amplifier-digital-twin",
-            "file-push",
-            dtu_id,
-            str(src),
-            m.destination,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+        rc, _stdout, stderr = await _run_cli(
+            _file_push_args(dtu_id, src, m.destination)
         )
-        stdout, stderr = await proc.communicate()
-        if proc.returncode != 0:
+        if rc != 0:
             raise RuntimeError(
                 f"file-push failed for {src} -> {dtu_id}:{m.destination} "
-                f"(exit {proc.returncode}): "
-                f"{stderr.decode('utf-8', errors='replace').strip()}"
+                f"(exit {rc}): {stderr.strip()}"
             )
+        if src.is_dir():
+            remote_root = f"{m.destination.rstrip('/')}/{src.name}"
+            quoted = shlex.quote(remote_root)
+            script = f"test -d {quoted}"
+            if any(src.iterdir()):
+                script += f' && [ -n "$(ls -A {quoted})" ]'
+            rc, _stdout, stderr = await _run_cli(
+                ["amplifier-digital-twin", "exec", dtu_id, "--", "sh", "-c", script]
+            )
+            if rc != 0:
+                raise RuntimeError(
+                    f"mount push reported success but {dtu_id}:{remote_root} is "
+                    f"missing or empty (source: {src}); refusing to proceed with "
+                    f"an undelivered mount"
+                )
 
 
 @dataclass

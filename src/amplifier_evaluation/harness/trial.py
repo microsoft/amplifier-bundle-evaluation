@@ -157,9 +157,9 @@ async def run_trial(
         # ---- seed ------------------------------------------------------
         _check_cancel(trial_dir)
         state_io.transition(trial_dir, record, TrialState.SEEDING)
-        # Push the task's workspace if it has one. The DTU CLI's file-push
-        # last-arg-is-destination rule handles individual files; for a
-        # workspace directory we push the directory contents into /workspace.
+        # Push the task's workspace if it has one. Each child is pushed into
+        # /workspace/: DTU.file_push handles files and directories (directory
+        # children are pushed with --recursive and verified to have landed).
         if spec.task.workspace_dir.is_dir():
             for child in spec.task.workspace_dir.iterdir():
                 await dtu.file_push(child, "/workspace/")
