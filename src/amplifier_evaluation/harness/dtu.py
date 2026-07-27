@@ -14,6 +14,7 @@ import asyncio
 import json
 import logging
 import os
+import shlex
 import shutil
 import uuid
 from dataclasses import dataclass
@@ -23,6 +24,45 @@ logger = logging.getLogger(__name__)
 
 
 CLI = "amplifier-digital-twin"
+
+
+def _file_push_args(instance_id: str, src: Path, destination: str) -> list[str]:
+    """Build the `file-push` argv for one source path.
+
+    The CLI requires `--recursive` when the source is a directory. It must
+    be OMITTED for plain files: with `--recursive` the CLI treats the
+    destination as a parent directory (`dest/<basename>`) instead of an
+    exact file path, which would break single-file pushes.
+    """
+    args = [CLI, "file-push"]
+    if src.is_dir():
+        args.append("--recursive")
+    args.extend([instance_id, str(src), destination])
+    return args
+
+
+def _pushed_dir_root(src: Path, destination: str) -> str:
+    """Remote path where a directory push lands.
+
+    The CLI preserves the source directory *name* under the destination
+    (`cp -r` convention): pushing `data/` to `/workspace/` creates
+    `/workspace/data/`.
+    """
+    return f"{destination.rstrip('/')}/{src.name}"
+
+
+def _dir_check_script(src: Path, remote_root: str) -> str:
+    """Shell script verifying a pushed directory actually landed in the DTU.
+
+    Checks the remote root exists and, when the source has entries, that
+    the remote root is non-empty. Guards against the CLI reporting success
+    while delivering nothing (silently-empty mounts corrupt grading).
+    """
+    quoted = shlex.quote(remote_root)
+    script = f"test -d {quoted}"
+    if any(src.iterdir()):
+        script += f' && [ -n "$(ls -A {quoted})" ]'
+    return script
 
 
 class DTUError(RuntimeError):
@@ -222,12 +262,23 @@ class DTU:
         *,
         timeout_s: float = 300.0,
     ) -> None:
-        """Push a single host path to a destination inside the DTU."""
+        """Push a single host path (file or directory) into the DTU.
+
+        Directory sources are pushed with `--recursive` (the CLI requires
+        it for directories; without it a directory push delivers nothing).
+        Per the CLI's `cp -r` convention the directory *name* is preserved:
+        pushing `data/` to `/workspace/` creates `/workspace/data/`.
+
+        After a directory push the destination is verified inside the DTU.
+        A push that "succeeds" but delivers nothing raises DTUError instead
+        of proceeding silently -- empty mounts corrupt everything downstream
+        (e.g. graders scoring an empty workspace).
+        """
         src = Path(source)
         if not src.exists():
             raise DTUError(f"file-push source missing: {src}")
         rc, _stdout, stderr = await _run(
-            [CLI, "file-push", self.id, str(src), destination],
+            _file_push_args(self.id, src, destination),
             timeout=timeout_s,
         )
         if rc != 0:
@@ -237,6 +288,20 @@ class DTU:
                 returncode=rc,
                 stderr=stderr,
             )
+        if src.is_dir():
+            remote_root = _pushed_dir_root(src, destination)
+            check = await self.exec_cmd(
+                ["sh", "-c", _dir_check_script(src, remote_root)],
+                timeout_s=60.0,
+            )
+            if check.returncode != 0:
+                raise DTUError(
+                    f"file-push reported success but {self.id}:{remote_root} "
+                    f"is missing or empty (source: {src}); the directory was "
+                    f"not delivered into the DTU",
+                    returncode=check.returncode,
+                    stderr=check.stderr,
+                )
 
     async def file_pull(
         self,
