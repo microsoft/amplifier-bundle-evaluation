@@ -29,10 +29,13 @@ CLI = "amplifier-digital-twin"
 def _file_push_args(instance_id: str, src: Path, destination: str) -> list[str]:
     """Build the `file-push` argv for one source path.
 
-    The CLI requires `--recursive` when the source is a directory. It must
-    be OMITTED for plain files: with `--recursive` the CLI treats the
-    destination as a parent directory (`dest/<basename>`) instead of an
-    exact file path, which would break single-file pushes.
+    Current DTU CLI versions auto-detect directory sources and push them
+    recursively regardless of this flag (DTU PR #18). We still pass
+    `--recursive` for directories as compatibility with older CLI versions
+    that predate auto-detect. The flag must be OMITTED for plain files:
+    with `--recursive` the CLI treats the destination as a parent directory
+    (`dest/<basename>`) instead of an exact file path, which would break
+    single-file pushes.
     """
     args = [CLI, "file-push"]
     if src.is_dir():
@@ -264,10 +267,12 @@ class DTU:
     ) -> None:
         """Push a single host path (file or directory) into the DTU.
 
-        Directory sources are pushed with `--recursive` (the CLI requires
-        it for directories; without it a directory push delivers nothing).
-        Per the CLI's `cp -r` convention the directory *name* is preserved:
-        pushing `data/` to `/workspace/` creates `/workspace/data/`.
+        Directory sources are pushed with `--recursive`. Current DTU CLI
+        versions auto-detect directories and push them recursively either
+        way (DTU PR #18); the flag is kept as compatibility with older CLI
+        versions that predate auto-detect. Per the CLI's `cp -r` convention
+        the directory *name* is preserved: pushing `data/` to `/workspace/`
+        creates `/workspace/data/`.
 
         After a directory push the destination is verified inside the DTU.
         A push that "succeeds" but delivers nothing raises DTUError instead

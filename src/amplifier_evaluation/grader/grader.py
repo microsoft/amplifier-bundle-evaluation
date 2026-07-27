@@ -157,9 +157,12 @@ async def _run_cli(args: list[str]) -> tuple[int, str, str]:
 def _file_push_args(dtu_id: str, src: Path, destination: str) -> list[str]:
     """Build the `file-push` argv for one mount source.
 
-    The CLI requires `--recursive` when the source is a directory (without
-    it a directory push delivers nothing). It must be OMITTED for plain
-    files, where the CLI treats the destination as an exact file path.
+    Current DTU CLI versions auto-detect directory sources and push them
+    recursively regardless of this flag (DTU PR #18). We still pass
+    `--recursive` for directories as compatibility with older CLI versions
+    that predate auto-detect. The flag must be OMITTED for plain files:
+    with it, the CLI treats the destination as a parent directory instead
+    of an exact file path.
     """
     args = ["amplifier-digital-twin", "file-push"]
     if src.is_dir():
