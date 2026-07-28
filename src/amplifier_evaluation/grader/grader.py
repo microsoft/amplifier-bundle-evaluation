@@ -35,6 +35,7 @@ from amplifier_evaluation.grader.tools import (
     SubmitRubricTool,
     validate_rubric_submission,
 )
+from amplifier_evaluation.harness.dtu import _unwrap_exec_envelope
 
 logger = logging.getLogger(__name__)
 
@@ -208,9 +209,13 @@ async def _push_mounts(
             script = f"test -d {quoted}"
             if any(src.iterdir()):
                 script += f' && [ -n "$(ls -A {quoted})" ]'
-            rc, _stdout, stderr = await _run_cli(
+            rc, stdout, stderr = await _run_cli(
                 ["amplifier-digital-twin", "exec", dtu_id, "--", "sh", "-c", script]
             )
+            # The CLI's exec (JSON mode) exits 0 itself and reports the inner
+            # command's result in a stdout envelope — unwrap it or this gate
+            # can never fire (same wrong-layer trap as install.py's).
+            rc, _stdout, stderr = _unwrap_exec_envelope(rc, stdout, stderr)
             if rc != 0:
                 raise RuntimeError(
                     f"mount push reported success but {dtu_id}:{remote_root} is "

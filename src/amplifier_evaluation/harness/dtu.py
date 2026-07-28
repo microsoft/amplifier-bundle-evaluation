@@ -124,6 +124,58 @@ def cli_available() -> bool:
     return shutil.which(CLI) is not None
 
 
+def _unwrap_exec_envelope(rc: int, stdout: str, stderr: str) -> tuple[int, str, str]:
+    """Unwrap the DTU CLI's `exec` JSON result envelope, if present.
+
+    The DTU CLI's `exec` in JSON mode (the default, and the mode this
+    harness uses) reports the INNER command's result as a JSON envelope on
+    stdout — {"id", "command", "exit_code", "stdout", "stderr"} — and exits
+    0 itself; only the opt-in `--stream` mode propagates the inner exit
+    code. Without unwrapping, `CommandResult.returncode` is the CLI
+    process's exit code, so every caller that checks it (notably
+    `install_agent`'s fail-loud setup_cmds check, install.py:171) tests the
+    WRONG LAYER: an inner command can fail with exit 1 and the trial
+    proceeds. This is not hypothetical — in parity-eval run 20260728T105215Z
+    all six trials recorded a FAILED in-DTU code-identity gate
+    ("exit_code": 1 in the envelope, `--- exit 0 ---` outer marker) and ran
+    to full metered completion anyway.
+
+    Unwrap only when the shape matches: outer success, stdout is one JSON
+    object carrying at least {command, exit_code, stdout, stderr} with an
+    int exit_code. Everything else passes through untouched: outer CLI
+    failures (nonzero rc, timeouts, container gone), `--stream`-style plain
+    output, JSON command output lacking the envelope keys, and
+    mock/alternative backends that don't wrap. Caveat: the CLI multiplexes
+    data and control on one stdout, so an inner command whose own output
+    exactly matches the envelope shape (the four keys with an int
+    exit_code) WILL be unwrapped — that ambiguity is inherent to the
+    envelope protocol and cannot be resolved on this side.
+    """
+    if rc != 0:
+        return rc, stdout, stderr
+    s = stdout.strip()
+    if not (s.startswith("{") and s.endswith("}")):
+        return rc, stdout, stderr
+    try:
+        envelope = json.loads(s)
+    except json.JSONDecodeError:
+        return rc, stdout, stderr
+    if not isinstance(envelope, dict) or not {
+        "command",
+        "exit_code",
+        "stdout",
+        "stderr",
+    } <= set(envelope):
+        return rc, stdout, stderr
+    inner_rc = envelope.get("exit_code")
+    if not isinstance(inner_rc, int):
+        return rc, stdout, stderr
+    inner_stderr = str(envelope.get("stderr") or "")
+    if stderr.strip():
+        inner_stderr = f"{inner_stderr}\n{stderr}" if inner_stderr else stderr
+    return inner_rc, str(envelope.get("stdout") or ""), inner_stderr
+
+
 @dataclass
 class DTU:
     """A handle to one running Digital Twin Universe instance."""
@@ -236,6 +288,7 @@ class DTU:
         # outer wait so the CLI can report properly.
         outer = (timeout_s + 60.0) if timeout_s is not None else None
         rc, stdout, stderr = await _run(args, timeout=outer)
+        rc, stdout, stderr = _unwrap_exec_envelope(rc, stdout, stderr)
         elapsed = time.monotonic() - start
 
         if stream_to_logfile is not None:
