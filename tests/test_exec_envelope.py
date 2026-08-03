@@ -94,6 +94,87 @@ def test_non_int_exit_code_passthrough():
     assert _unwrap_exec_envelope(0, env, "")[0] == 0
 
 
+def test_warning_on_unrecognizable_stdout(caplog):
+    """Outer success + unrecognizable stdout passes through, but LOUDLY:
+    the real CLI always envelopes, so plain output at rc 0 means the
+    envelope shape drifted — that must show up in logs, not vanish."""
+    import logging
+
+    with caplog.at_level(logging.WARNING, logger="amplifier_evaluation.harness.dtu"):
+        rc, stdout, stderr = _unwrap_exec_envelope(0, "hello world\n", "")
+    assert (rc, stdout, stderr) == (0, "hello world\n", "")
+    assert any("not a recognizable JSON envelope" in r.message for r in caplog.records)
+
+    # A proper envelope unwraps silently — no drift warning.
+    caplog.clear()
+    with caplog.at_level(logging.WARNING, logger="amplifier_evaluation.harness.dtu"):
+        _unwrap_exec_envelope(0, REAL_FAILED_ENVELOPE, "")
+    assert not caplog.records
+
+    # Outer CLI failure passes through silently too (raw contract applies).
+    caplog.clear()
+    with caplog.at_level(logging.WARNING, logger="amplifier_evaluation.harness.dtu"):
+        _unwrap_exec_envelope(7, "boom\n", "cli blew up")
+    assert not caplog.records
+
+
+def test_last_line_envelope_scan():
+    """An envelope preceded by other output on the same stream (e.g. a
+    wrapper banner) is still found via the last-line fallback."""
+    stdout = "some banner line\nanother line\n" + REAL_FAILED_ENVELOPE + "\n"
+    rc, inner_stdout, stderr = _unwrap_exec_envelope(0, stdout, "")
+    assert rc == 1
+    assert "RESOLVED-SHA skills-prefix-mirror" in inner_stdout
+    assert "no cache clone from the skills-bundle mirror found" in stderr
+
+
+def test_nested_output_envelope_unwrapped():
+    """Some CLI versions nest the envelope fields under an "output" key —
+    unwrapped only after the flat 4-key gate fails."""
+    env = json.dumps(
+        {
+            "id": "dtu-x",
+            "output": {
+                "command": "bash -lc 'exit 3'",
+                "exit_code": 3,
+                "stdout": "partial\n",
+                "stderr": "gate failed\n",
+            },
+        }
+    )
+    rc, stdout, stderr = _unwrap_exec_envelope(0, env, "")
+    assert (rc, stdout, stderr) == (3, "partial\n", "gate failed\n")
+
+
+def test_flat_envelope_wins_over_nested_output():
+    """Flat-gate-first ordering: a flat envelope that also carries an
+    "output" sub-object is never shadowed by it."""
+    env = json.dumps(
+        {
+            "command": "c",
+            "exit_code": 5,
+            "stdout": "flat\n",
+            "stderr": "",
+            "output": {
+                "command": "x",
+                "exit_code": 9,
+                "stdout": "nested\n",
+                "stderr": "",
+            },
+        }
+    )
+    rc, stdout, _ = _unwrap_exec_envelope(0, env, "")
+    assert (rc, stdout) == (5, "flat\n")
+
+
+def test_lookalike_with_output_subobject_passthrough():
+    """JSON command output whose "output" value is not an envelope still
+    passes through — the nested tolerance doesn't widen the lookalike net."""
+    payload = json.dumps({"output": {"result": "ok"}, "count": 3})
+    rc, stdout, stderr = _unwrap_exec_envelope(0, payload, "")
+    assert (rc, stdout, stderr) == (0, payload, "")
+
+
 def test_outer_failure_never_unwrapped():
     """Outer CLI failure (timeout, container gone) is reported as-is."""
     rc, _, _ = _unwrap_exec_envelope(7, REAL_FAILED_ENVELOPE, "cli blew up")
