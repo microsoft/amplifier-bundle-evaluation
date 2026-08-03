@@ -17,6 +17,7 @@ instead of proceeding silently (silently-empty mounts corrupt grading).
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 
 import pytest
@@ -152,16 +153,34 @@ def test_file_push_missing_source_raises(tmp_path: Path, monkeypatch):
 
 
 class FakeCli:
-    """Stand-in for `grader._run_cli` with per-call return codes."""
+    """Stand-in for `grader._run_cli` with per-call (rc, stdout, stderr) results.
 
-    def __init__(self, returncodes: list[int] | None = None):
+    The default result models the real CLI's happy path (exit 0, no output).
+    Note the real `exec` (JSON mode) NEVER propagates the inner command's
+    exit code: it exits 0 and reports the inner result only inside a JSON
+    envelope on stdout — build exec results with `_exec_envelope()`.
+    """
+
+    def __init__(self, results: list[tuple[int, str, str]] | None = None):
         self.calls: list[list[str]] = []
-        self.returncodes = list(returncodes or [])
+        self.results = list(results or [])
 
     async def __call__(self, args):
         self.calls.append(list(args))
-        rc = self.returncodes.pop(0) if self.returncodes else 0
-        return (rc, "", "boom" if rc else "")
+        return self.results.pop(0) if self.results else (0, "", "")
+
+
+def _exec_envelope(exit_code: int, stdout: str = "", stderr: str = "") -> str:
+    """The DTU CLI's `exec` JSON-mode result envelope, as printed on stdout."""
+    return json.dumps(
+        {
+            "id": "dtu-x",
+            "command": "sh -c '...'",
+            "exit_code": exit_code,
+            "stdout": stdout,
+            "stderr": stderr,
+        }
+    )
 
 
 def test_push_mounts_file_omits_recursive(tmp_path: Path, monkeypatch):
@@ -213,7 +232,10 @@ def test_push_mounts_dir_undelivered_raises(tmp_path: Path, monkeypatch):
     src = tmp_path / "refs"
     src.mkdir()
     (src / "answer.txt").write_text("42", encoding="utf-8")
-    cli = FakeCli(returncodes=[0, 1])  # push "succeeds", verification fails
+    # Real CLI behavior (JSON mode): the push succeeds; the verification
+    # exec's CLI process ALSO exits 0 and reports the inner `test -d`/`ls -A`
+    # failure only inside the stdout envelope.
+    cli = FakeCli(results=[(0, "", ""), (0, _exec_envelope(exit_code=1), "")])
     monkeypatch.setattr(grader_module, "_run_cli", cli)
     mounts = [Mount(source="refs", destination="/grader/data/")]
 
@@ -223,7 +245,7 @@ def test_push_mounts_dir_undelivered_raises(tmp_path: Path, monkeypatch):
 
 def test_push_mounts_push_failure_raises(tmp_path: Path, monkeypatch):
     (tmp_path / "reference.json").write_text("{}", encoding="utf-8")
-    cli = FakeCli(returncodes=[2])
+    cli = FakeCli(results=[(2, "", "boom")])
     monkeypatch.setattr(grader_module, "_run_cli", cli)
     mounts = [Mount(source="reference.json", destination="/grader/reference.json")]
 

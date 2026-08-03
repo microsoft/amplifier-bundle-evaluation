@@ -124,6 +124,104 @@ def cli_available() -> bool:
     return shutil.which(CLI) is not None
 
 
+_ENVELOPE_KEYS = {"command", "exit_code", "stdout", "stderr"}
+
+
+def _envelope_from_payload(payload: dict) -> dict | None:
+    """Return the exec-result envelope inside `payload`, or None.
+
+    The strict FLAT shape — at least {command, exit_code, stdout, stderr}
+    with an int exit_code — is checked first. Only when that gate fails do
+    we accept the nested variant some CLI versions emit, where those same
+    fields live under an "output" key. Ordering matters: the flat gate is
+    the primary protocol, so a flat envelope that happens to also carry an
+    "output" sub-object is never shadowed by it, and the json-lookalike
+    passthrough semantics for flat command output are unchanged.
+    """
+    if _ENVELOPE_KEYS <= set(payload) and isinstance(payload.get("exit_code"), int):
+        return payload
+    nested = payload.get("output")
+    if (
+        isinstance(nested, dict)
+        and _ENVELOPE_KEYS <= set(nested)
+        and isinstance(nested.get("exit_code"), int)
+    ):
+        return nested
+    return None
+
+
+def _unwrap_exec_envelope(rc: int, stdout: str, stderr: str) -> tuple[int, str, str]:
+    """Unwrap the DTU CLI's `exec` JSON result envelope, if present.
+
+    The DTU CLI's `exec` in JSON mode (the default, and the mode this
+    harness uses) reports the INNER command's result as a JSON envelope on
+    stdout — {"id", "command", "exit_code", "stdout", "stderr"} — and exits
+    0 itself; only the opt-in `--stream` mode propagates the inner exit
+    code. Without unwrapping, `CommandResult.returncode` is the CLI
+    process's exit code, so every caller that checks it (notably
+    `install_agent`'s fail-loud setup_cmds check, install.py:171) tests the
+    WRONG LAYER: an inner command can fail with exit 1 and the trial
+    proceeds. This is not hypothetical — in parity-eval run 20260728T105215Z
+    all six trials recorded a FAILED in-DTU code-identity gate
+    ("exit_code": 1 in the envelope, `--- exit 0 ---` outer marker) and ran
+    to full metered completion anyway.
+
+    Unwrap only when the shape matches: outer success, and either the whole
+    stdout or (fallback) its last line is one JSON object carrying the
+    envelope — the flat {command, exit_code, stdout, stderr} shape with an
+    int exit_code, or, only after that flat gate fails, the same fields
+    nested under an "output" key (a variant some CLI versions emit; see
+    `_envelope_from_payload`). The last-line scan tolerates an envelope
+    preceded by other output on the same stream (e.g. a wrapper banner).
+
+    Everything else passes through untouched: outer CLI failures (nonzero
+    rc, timeouts, container gone) silently, and — with a loud
+    `logger.warning`, so an envelope-shape change in the CLI shows up in
+    logs instead of silently mis-layering every result — outer-success
+    stdout that is not a recognizable envelope (`--stream`-style plain
+    output, JSON command output lacking the envelope keys, and
+    mock/alternative backends that don't wrap). Caveat: the CLI multiplexes
+    data and control on one stdout, so an inner command whose own output
+    exactly matches the envelope shape (the four keys with an int
+    exit_code) WILL be unwrapped — that ambiguity is inherent to the
+    envelope protocol and cannot be resolved on this side.
+    """
+    if rc != 0:
+        return rc, stdout, stderr
+    s = stdout.strip()
+    # The envelope is normally the entire stdout; fall back to the last
+    # line to tolerate an envelope preceded by other output.
+    candidates = [s]
+    if "\n" in s:
+        last_line = s.rsplit("\n", 1)[-1].strip()
+        if last_line:
+            candidates.append(last_line)
+    for candidate in candidates:
+        if not (candidate.startswith("{") and candidate.endswith("}")):
+            continue
+        try:
+            payload = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        envelope = _envelope_from_payload(payload)
+        if envelope is None:
+            continue
+        inner_stderr = str(envelope.get("stderr") or "")
+        if stderr.strip():
+            inner_stderr = f"{inner_stderr}\n{stderr}" if inner_stderr else stderr
+        return envelope["exit_code"], str(envelope.get("stdout") or ""), inner_stderr
+    logger.warning(
+        "dtu exec: CLI stdout is not a recognizable JSON envelope; passing "
+        "through raw output with outer rc=%s (envelope shape may have "
+        "changed). First 200 chars: %r",
+        rc,
+        s[:200],
+    )
+    return rc, stdout, stderr
+
+
 @dataclass
 class DTU:
     """A handle to one running Digital Twin Universe instance."""
@@ -236,6 +334,7 @@ class DTU:
         # outer wait so the CLI can report properly.
         outer = (timeout_s + 60.0) if timeout_s is not None else None
         rc, stdout, stderr = await _run(args, timeout=outer)
+        rc, stdout, stderr = _unwrap_exec_envelope(rc, stdout, stderr)
         elapsed = time.monotonic() - start
 
         if stream_to_logfile is not None:
