@@ -1,10 +1,12 @@
 """Unit tests for `file-push` command construction and fail-loud guards.
 
-The `amplifier-digital-twin file-push` CLI requires `--recursive` when any
-source is a directory (without it a directory push delivers nothing), and
-treats the destination of a plain-file push as an exact file path (so
-`--recursive` must be omitted for files). These tests pin that contract for
-both call sites that shell out to `file-push`:
+NOTE: current DTU CLI versions auto-detect directory sources and push them
+recursively regardless of `--recursive` (DTU PR #18). We still pass the
+flag for directory sources as compatibility with older CLI versions that
+predate auto-detect, and OMIT it for plain files (with `--recursive` the
+CLI treats the destination as a parent directory instead of an exact file
+path). These tests pin that argv contract for both call sites that shell
+out to `file-push`:
 
 - `harness.dtu.DTU.file_push`
 - `grader.grader._push_mounts`
