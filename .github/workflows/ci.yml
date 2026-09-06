@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Minimal read-only token — no secrets needed or exposed.
+# Safe for Dependabot PRs and external fork contributors.
+#
+# NOTHING HERE RUNS AN EVAL. The example harnesses under `examples/`, the
+# benchmark runner, and `.amplifier/evaluations/run.sh` all spend real money
+# (LLM API calls) and need live Digital Twin Universe infrastructure. No job
+# below invokes them, and no job needs an API key.
+permissions:
+  contents: read
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────────
+  # Code quality — ruff format + lint, SCOPED TO THE LIBRARY (src/ + tests/).
+  #
+  # The scope is deliberate and load-bearing. This repo carries ~51 MB of
+  # benchmark task fixtures under `amplifier-benchmark/tasks/` plus example
+  # harnesses under `examples/` and a fixture bundle checked in under
+  # `.amplifier/evaluations/tasks/*/workspace/`. Those are DATA and FIXTURES,
+  # not library code: some are mounted verbatim into a grader container, and one
+  # is a deliberately-imperfect bundle that a task is scored on. Linting them is
+  # noise at best and actively wrong at worst.
+  #
+  # Measured on this repo at 3531ccd: `ruff format --check .` exits 1 on three
+  # such files (`amplifier-benchmark/tasks/chiptune_generator/grader-data/analyze_midi.py`,
+  # `amplifier-benchmark/tasks/pixel_art_generator/grader-data/validate_sprites.py`,
+  # `examples/04-foundation-vs-dev-demo/swebench/grade.py`) while
+  # `ruff format --check src tests` reports "26 files already formatted".
+  # pyproject.toml has no [tool.ruff] section, so an unscoped `ruff .` walks the
+  # whole tree; the explicit `src tests` path arguments below ARE the scoping
+  # mechanism. If a [tool.ruff] config is added later, prefer moving the scope
+  # there so local runs and CI agree.
+  # ───────────────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
+        with:
+          enable-cache: true
+
+      - name: Install dev dependencies
+        # --only-group dev installs ruff/pytest ONLY: the project itself is not
+        # built or installed here. That matters because pyproject's
+        # [tool.hatch.build.targets.wheel.force-include] copies the whole 51 MB
+        # `amplifier-benchmark/` tree into the installed package (even for an
+        # editable install). The lint job never pays that cost.
+        run: uv sync --frozen --only-group dev
+
+      - name: Check formatting (library only)
+        run: uv run --frozen --only-group dev ruff format --check src tests
+
+      - name: Lint (library only)
+        run: uv run --frozen --only-group dev ruff check src tests
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Library tests + import smoke, across supported Python versions.
+  #
+  # `tests/` holds unit tests only — no network, no DTU, no API keys. They stub
+  # the DTU CLI and assert argv/envelope contracts.
+  # ───────────────────────────────────────────────────────────────────────────
+  test:
+    name: Tests — Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        # --frozen: use the lockfile exactly as committed; fail if it would need
+        # updating. This ensures Dependabot bumps are tested as-proposed.
+        run: uv sync --frozen
+
+      - name: Import smoke
+        run: uv run --frozen python -c "import amplifier_evaluation; print(amplifier_evaluation.__file__)"
+
+      - name: Run tests
+        run: uv run --frozen pytest tests/ -q --tb=short
