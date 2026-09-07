@@ -1,0 +1,74 @@
+# i0cm — proposed fix for .amplifier/evaluation/scenarios/s3/scripted_driver.py
+#
+# Apply from the EVALS REPO ROOT (/home/bkrabach/dev/openai-evals-team-ci):
+#   git apply --check docs/…/i0cm-scripted-driver-continuity.patch   # dry run first
+#   git apply          <this file>
+#
+# The same file is duplicated byte-identically in 70 lane worktrees under
+# hw-model-performance/lanes/*/evaluation/scenarios/s3/ — the manager decides
+# whether those copies are refreshed. This lane edited NONE of them (0rg hazard).
+#
+# Verified: fails-before / passes-after against
+#   docs/lanes/i0cm-harness-defect-audit/test_scripted_driver_continuity.py
+#
+--- a/.amplifier/evaluation/scenarios/s3/scripted_driver.py
++++ b/.amplifier/evaluation/scenarios/s3/scripted_driver.py
+@@ -77,11 +77,39 @@
+     return False, "TIMEOUT", out
+ 
+ 
++SID_RE = re.compile(r"Session ID:\s*([0-9a-f-]{8,})")
++RESUME_RE = re.compile(r"Resuming session:\s*([0-9a-f-]{8,})")
++
++
+ def capture_sid(out: str) -> str | None:
+-    m = re.search(r"Session ID:\s*([0-9a-f-]{8,})", out)
++    """Return the session id THIS turn ran in, whichever way the CLI printed it.
++
++    Turn 1 prints `Session ID: <sid>`. `amplifier run --resume` does NOT
++    re-print that line -- it prints `Resuming session: <sid>` instead. Matching
++    only the first phrasing made every turn after the first return None, which
++    is why `session_continuity_ok` below was False for 151/151 driver records
++    ever recorded by this driver (audit: model_performance-i0cm).
++    """
++    m = SID_RE.search(out) or RESUME_RE.search(out)
+     return m.group(1) if m else None
+ 
+ 
++def continuity_ok(turns: list[dict]) -> bool:
++    """True iff every turn we could OBSERVE ran in the same session.
++
++    A turn whose host-side stdout capture came back empty (`out_len == 0`) is
++    unobserved, not broken: the container executed it and the transport lost
++    the copy. It is excluded from the identity check and reported separately as
++    `turn_captures_empty` -- never silently absorbed. A turn that produced
++    output but no session line at all (e.g. a TIMEOUT stub) IS a break.
++    """
++    if not turns:
++        return False
++    sids = [t["session_id"] for t in turns if t["session_id"]]
++    empty = [t for t in turns if t.get("out_len") == 0]
++    return bool(sids) and len(set(sids)) == 1 and len(sids) + len(empty) == len(turns)
++
++
+ def main() -> int:
+     ap = argparse.ArgumentParser()
+     ap.add_argument("--dtu", required=True)
+@@ -130,13 +158,14 @@
+     rec["t_end"] = time.time()
+     rec["wall_s"] = round(rec["t_end"] - rec["t_start"], 1)
+     rec["root_session_id"] = sid
+-    # continuity check: every turn after 1 should carry the SAME session id
+-    sids = [x["session_id"] for x in rec["turns"] if x["session_id"]]
+-    rec["session_continuity_ok"] = len(set(sids)) == 1 and len(sids) == len(rec["turns"])
++    # continuity check: every OBSERVED turn should carry the SAME session id
++    rec["turn_captures_empty"] = sum(1 for x in rec["turns"] if x["out_len"] == 0)
++    rec["session_continuity_ok"] = continuity_ok(rec["turns"])
+     (outdir / "transcript.txt").write_text("".join(transcript_parts))
+     (outdir / "driver_record.json").write_text(json.dumps(rec, indent=2))
+     print(json.dumps({"wall_s": rec["wall_s"], "root_session_id": sid,
+                       "continuity_ok": rec["session_continuity_ok"],
++                      "turn_captures_empty": rec["turn_captures_empty"],
+                       "turns_done": sum(1 for x in rec["turns"] if x["done"])}, indent=2))
+     return 0
+ 

@@ -1,0 +1,47 @@
+RUN: /home/bkrabach/dev/openai-evals-team-ci/.amplifier/evaluation/treatment-validation/20260906-8rugb/runs/A-anth-01
+
+--- 1. what the driver RECORDED -------------------------------------------
+  session_continuity_ok : False
+  root_session_id       : ca74aafb-50f7-4d17-b1ef-b01f0c012a34
+  turn1: done=True marker=DONE EXIT:0 session_id=ca74aafb-50f7-4d17-b1ef-b01f0c012a34 out_len=158054
+  turn2: done=True marker=DONE EXIT:0 session_id=None out_len=16233
+  turn3: done=True marker=DONE EXIT:0 session_id=None out_len=6262
+  turn4: done=True marker=DONE EXIT:0 session_id=None out_len=33421
+  turn5: done=True marker=DONE EXIT:0 session_id=None out_len=6875
+
+--- 2. what each turn ACTUALLY printed ------------------------------------
+  turn1: Session ID: ca74aafb-50f7-4d17-b1ef-b01f0c012a34
+  turn2: Resuming session: ca74aafb-50f7-4d17-b1ef-b01f0c012a34
+  turn3: Resuming session: ca74aafb-50f7-4d17-b1ef-b01f0c012a34
+  turn4: Resuming session: ca74aafb-50f7-4d17-b1ef-b01f0c012a34
+  turn5: Resuming session: ca74aafb-50f7-4d17-b1ef-b01f0c012a34
+
+--- 3. what the CONTAINER's own session file says --------------------------
+  root session ca74aafb-50f7-4d17-b1ef-b01f0c012a34
+  prompt:complete events: 5   (compare against the turn count above; the driver flag said continuity FAILED)
+
+############################################################################
+# The SAME script on the one run the corrected check still calls broken:
+############################################################################
+
+RUN: /home/bkrabach/dev/openai-evals-team-ci/.amplifier/evaluation/treatment-validation/20260901-threeknob/runs/val-tk-sol-xhigh-s3-02
+
+--- 1. what the driver RECORDED -------------------------------------------
+  session_continuity_ok : False
+  root_session_id       : 1f19b7ad-8e07-40a7-87a2-9c1513e95552
+  turn1: done=True marker=DONE EXIT:0 session_id=1f19b7ad-8e07-40a7-87a2-9c1513e95552 out_len=119437
+  turn2: done=True marker=DONE EXIT:0 session_id=None out_len=92153
+  turn3: done=True marker=DONE EXIT:0 session_id=None out_len=6956
+  turn4: done=True marker=DONE EXIT:0 session_id=None out_len=72761
+  turn5: done=True marker=DONE EXIT:0 session_id=None out_len=10002
+
+--- 2. what each turn ACTUALLY printed ------------------------------------
+  turn1: Session ID: 1f19b7ad-8e07-40a7-87a2-9c1513e95552
+  turn2: Resuming session: 1f19b7ad-8e07-40a7-87a2-9c1513e95552
+  turn3: Resuming session: 1f19b7ad-8e07-40a7-87a2-9c1513e95552
+  turn4: Resuming session: 1f19b7ad-8e07-40a7-87a2-9c1513e95552
+  turn5: Resuming session: 8839b22c-e8bf-4ae0-91b7-fe92a8d109d5
+
+--- 3. what the CONTAINER's own session file says --------------------------
+  root session 1f19b7ad-8e07-40a7-87a2-9c1513e95552
+  prompt:complete events: 4   (compare against the turn count above; the driver flag said continuity FAILED)

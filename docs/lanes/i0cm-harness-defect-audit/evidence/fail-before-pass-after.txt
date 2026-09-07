@@ -1,0 +1,16 @@
+==================================================================
+FAIL-BEFORE  — pristine driver
+  /home/bkrabach/dev/openai-evals-team-ci/.amplifier/evaluation/scenarios/s3/scripted_driver.py
+  md5 a5c14242df801eabe776e742724177da
+==================================================================
+FAILED docs/lanes/i0cm-harness-defect-audit/test_scripted_driver_continuity.py::test_capture_sid_reads_resume_phrasing
+FAILED docs/lanes/i0cm-harness-defect-audit/test_scripted_driver_continuity.py::test_continuity_true_for_a_real_five_turn_resume_run
+FAILED docs/lanes/i0cm-harness-defect-audit/test_scripted_driver_continuity.py::test_continuity_survives_an_empty_turn_capture
+3 failed, 3 passed in 0.02s
+
+==================================================================
+PASS-AFTER  — same test, driver with i0cm-scripted-driver-continuity.patch applied
+  md5 dc307c50090b11d981eee44382668431
+==================================================================
+......                                                                   [100%]
+6 passed in 0.01s

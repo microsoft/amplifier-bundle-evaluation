@@ -1,0 +1,61 @@
+BLAST RADIUS — enumerated, not estimated.   generated 2026-09-07T01:04:08Z
+
+== 1. Every copy of the S3 scripted driver on this machine ==
+   copies: 71
+   distinct md5s:
+          71 a5c14242df801eabe776e742724177da
+   canonical: openai-evals-team-ci/.amplifier/evaluation/scenarios/s3/scripted_driver.py
+   the other 70 are byte-identical lane worktree copies:
+     127-lean-head-powered-quality 12v-tool-block-diet 15v-cost-rate-anomaly 161-preset-validation 
+     1bg-delegation-bounds 1p4-ledger-force-flag 1rn-server-side-compaction 1ru-lean-head-settle-s7 
+     1sv-threeknob-reconcile 2lp-stale-nested-ledger 34l-layerb-capture-reread 38s-usage-iterations 
+     3d2-lean-head-cost-negative 3hy-luna-rate-drift 3re-verify-publication 4nd-anthropic-rewarm-confirm 
+     5zf-wire-publication-check 5zp-lean-head-v1-confirm 62pg-system-prompt-audit 
+     6da-summary-fork-measure 6go-behaviour-index-key 6x4-goal-template-paths 7pj-purity-hook-split 
+     81qj-pr33-notice-reverify 8bj-orphan-worktree-commits 94w-compaction-usage-footgun 
+     9ks-zero-usage-cost-blind a6i-s7-feed-write-lock aof-artifact-path-conflict/evals-fix 
+     bd1-boundary-telemetry bev-summary-input-channel-ab bji-lean-head bm1-xhigh-vs-max 
+     bnj-partial-path-exercised boq-compact-retention-shapes bub-deferred-tools-phase1 
+     cal-deferred-tools-phase2 cb2-retention-headroom cuf-v5-run-scoped cwq-goal-tells-lanes-to-sweep 
+     d0q-haiku-budget-tokens-sweep drbf-compaction-notice-ab dt1-serverside-retention 
+     efw-staged-scorecard-volume egh-cross-provider-leak fi7-interior-replacement h6v-lean-head-confirm 
+     h7n-knob-consistent-anthropic j12-naming-census-undercount ji4-refused-replay-validity 
+     k64-delegate-timeout-eval kez-done-note-collision kiy-tier-r-transcript-door l2-272k-cliff 
+     l6-xhigh-vs-max lvb-s7-workspace-strip o3d-behaviour-fallback-delete otr-armb-medium-root 
+     rt6-272k-cliff sdg-haiku-effort-audit shx-correlation-id skw3-lean-head-cost-decisive 
+     t8p-reasoning-context-ab vbs-lean-head-quality-s7 vr8-rewarm-gate-rebuild woe-lane-scoped-teardown 
+     wxs-clear-at-least-doseresponse xy0-naming-hook-cost ys8-reasoning-summary 
+     zdl-encrypted-content-cost
+
+== 2. Sibling drivers that share the same 'Session ID:' regex but compute NO continuity flag ==
+   openai-evals-team-ci/.amplifier/evaluation/scenarios/s5-crac/scripted_driver.py
+     capture_sid regex : Session ID:
+     continuity_ok field present: 0
+     sid used for      : --resume target, grader --root-sid, boundary/compaction counting — all set from TURN 1 ONLY,
+                         and turn 1 DOES print 'Session ID:'. Unaffected by this defect.
+   openai-evals-team-ci/.amplifier/evaluation/scenarios/s7-retention-headroom/scripted_driver.py
+     capture_sid regex : Session ID:
+     continuity_ok field present: 0
+     sid used for      : --resume target, grader --root-sid, boundary/compaction counting — all set from TURN 1 ONLY,
+                         and turn 1 DOES print 'Session ID:'. Unaffected by this defect.
+
+== 3. Every CONSUMER of the flag (code/docs; capture run dirs excluded) ==
+   (grep -l continuity_ok, minus the 71 driver copies and the 65 identical scenarios/s3/RESULTS.md copies)
+     WRITER   scenarios/s3/scripted_driver.py                      sets the field                     (x71 copies)
+     DOC      scenarios/s3/RESULTS.md   "Honest caveats"           already documents it as a REPORTING ARTIFACT (x71 copies, 1 distinct)
+     REPORT   treatment-validation/20260901-rebaseline/REPORT.md   "reports continuity_ok=False falsely"
+     REPORT   treatment-validation/20260901-threeknob/LEG-B-REPORT.md  "Driver continuity false-negative ... Reported as resume_ok=OK"
+     ROW      treatment-validation/20260901-threeknob/run_s3_cell.sh   copies it into a row; does NOT gate
+     ROW+FIX  treatment-validation/20260901-threeknob/remeasure_s3.sh  renames it continuity_flag_driver AND computes its own resume_sid_consistent
+     PRINT    treatment-validation/20260901-threeknob/summarize.py     prints it; does NOT gate
+     FIX      treatment-validation/20260906-8rugb/summarize_run.py     ignores it, computes continuity from both phrasings + prompt:complete
+     DASH     _dashboard/campaign-data.md                          repeats the "reporting artifact" caveat
+     NOTES    ai-notes/00-what-we-know.md                          8rugb's defect paragraph (the claim under audit)
+     PROBE    probes/62pg-system-prompt-audit/FINDINGS.md          cites the field's PRESENCE (not its value) as proof a run was containerised
+
+   NOT ONE of these drops, re-runs, or invalidates a run on the flag's value.
+
+== 4. The proof that no lane could have gated on it ==
+   The flag is TRUE in 0 of 151 driver records across all 9 capture roots that use this driver.
+   A lane that gated on it would have had 0 valid runs and published nothing.
+   All 9 capture roots published results. Therefore no lane gated on it.

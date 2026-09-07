@@ -1,0 +1,24 @@
+driver records carrying session_continuity_ok : 151
+  driver's OWN flag True                      : 0
+  PATCHED continuity_ok True                  : 148
+  PATCHED continuity_ok False                 : 3
+  runs with >=1 empty turn capture            : 6 (10 turns)
+
+runs the CORRECTED check still calls broken:
+  20260901-rebaseline/runs/val-rb-oai-sol-xhigh-s3-01
+      1 turn(s) with output but no session line
+  20260901-rebaseline/runs/val-rb-oai-sol-xhigh-s3-02
+      1 turn(s) with output but no session line
+  20260901-threeknob/runs/val-tk-sol-xhigh-s3-02
+      2 distinct session ids ['1f19b7ad-8e07-40a7-87a2-9c1513e95552', '8839b22c-e8bf-4ae0-91b7-fe92a8d109d5']
+
+per capture root (corrected_true / total):
+  20260830-dialin                     18/18
+  20260901-rebaseline                 14/16
+  20260901-threeknob                  63/64
+  20260902-161-presets                19/19
+  20260902-j0u-knobrouting            10/10
+  20260902-ytg-presets-revision        8/8
+  20260903-h7n-knobanth                1/1
+  20260906-8rugb                      14/14
+  20260906-otr-armb                    1/1
