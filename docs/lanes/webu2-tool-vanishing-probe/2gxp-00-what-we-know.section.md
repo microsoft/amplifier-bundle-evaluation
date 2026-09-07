@@ -1,0 +1,37 @@
+### (s) The deferred-tool vanishing is caused by DEFERRAL, not prompt wording — and `webu`'s DON'T-BUILD still stands **[ADDED 2026-09-07 [2gxp]]**
+
+`2gxp` bought the one arm `webu` could not: **3 arms x n=6, 18 launches, 18 valid (validity 1.000),
+$19.90 of $25**, one DTU, interleaved, every arm's shape **proven on its own captured wire** (0
+`Missing namespace` 400s, driver md5 `dc307c50` 18/18, provider-openai `702b361`, context-simple
+`ee26d23`). Arms: **(a)** all deferrable tools deferred (`webu`'s t1) · **(b)** identical **but
+`write_file`/`edit_file`/`delegate` kept ALWAYS-VISIBLE** · **(c)** control.
+
+**THE RULE returns DON'T-BUILD STANDS, which the item states is a PASS.** Clause 1 (restore the three
+tools to within +/-30% of control) **FAILS at -36.4%**; clause 2 (keep >=50% of arm a's head saving)
+**PASSES at 50.9%** on pinned `cache_read` and **FAILS at 44.1%** on `cache_write` @ req 0. REVISIT
+needs both.
+
+**But the mechanism question is ANSWERED.** Arms a and b differ **only** in which tools carry
+`defer_loading`; prompt wording is constant by construction. Executed calls of the three go **1 -> 14**;
+runs reaching any of them **1/6 -> 4/6** (control 6/6). Fisher exact: **a vs c p = 0.0152** (arm a is
+significantly worse than control), **b vs c p = 0.4545** (arm b is NOT distinguishable from control),
+b vs a p = 0.2424. Per tool, `role:tool` result entries (`tool:pre` agrees on **42 of 42 cells**):
+`write_file` 0 / 4 / 0 · `edit_file` 0 / 6 / 14 · `delegate` 1 / 4 / 8 · `apply_patch` **35** / 27 / 30.
+
+**The fix costs about half the win:** keeping those three visible gives back **56%** of the head
+saving (2,782.5 of 5,470 tok) because `delegate` alone is 3,077 tok of schema. **No default shipped,
+no design item filed** -- the rule says DON'T-BUILD stands.
+
+**Two instrument findings, both registered BEFORE the spend:**
+- **The +/-30% clause is underpowered at n=6 and was known to be.** Bootstrap over `webu`'s own
+  control per-run aggregate `[5,13,4,6,0,11,0,0,0,2]`: it passes only **0.353** of the time **even
+  under perfect restoration**. A failed ratio clause is NOT the claim "the tools stayed gone".
+- **G9's "pinned cache_read" is not stable in the deferred arm.** In **3 of 6** arm-a runs the head
+  **re-grows after `tool_search` loads tools** (12,4xx at req 0 -> 14,101 / 16,183 / 16,290), so
+  `webu`'s **-6,313.5 tok / -33.7%** is the **request-0** saving; steady state here is **-5,470 /
+  -29.2%**. Quote which estimator you mean. Filed as `model_performance-3413`.
+
+`webu`'s D2 bash-surrogate tripwire **again moved protectively** (arm a has the lowest surrogate rate
+of the three arms) -- the harm still takes a shape that rule cannot see. Quality shows no harm in any
+arm (median S3 90 / 100 / 100, strict-pass 6/6 · 5/6 · 5/6), and S3 remains structurally unable to
+price the delegation arm a loses.

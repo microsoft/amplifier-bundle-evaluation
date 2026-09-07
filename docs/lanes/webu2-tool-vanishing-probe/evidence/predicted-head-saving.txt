@@ -1,0 +1,21 @@
+per-schema wire tokens (webu control request 0):
+  delegate         3077.2   [arm b keeps LOADED]
+  load_skill        836.4
+  grep              835.1
+  recipes           689.2
+  bash              565.4
+  edit_file         411.9   [arm b keeps LOADED]
+  read_file         345.6
+  glob              343.6
+  todo              321.6
+  web_fetch         268.9
+  write_file        257.2   [arm b keeps LOADED]
+  mode              109.8
+  web_search         47.3
+  apply_patch         4.8
+
+arm a defers 7222.2 tok; webu measured saving 6313.5 -> namespace overhead 908.7
+arm b defers 3475.9 tok
+  proportional model:   3038.6 tok = 48.1% of arm a's saving
+  overhead model    :   2567.2 tok = 40.7% of arm a's saving
+PREDICTION P-A: clause 2 (>=50% of arm a's saving) FAILS.
