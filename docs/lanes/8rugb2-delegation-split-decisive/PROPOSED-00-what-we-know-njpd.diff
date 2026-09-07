@@ -1,0 +1,84 @@
+PROPOSED addition to /home/bkrabach/dev/openai-evals-team-ci/ai-notes/00-what-we-know.md
+
+NOT APPLIED BY THIS LANE. Emitted here, named after this lane, inside this lane's
+own artifact root, per the 0rg hazard rule. The manager applies it.
+
+Insert as a new subsection at the end of section 2, before "### DECISIONS (owner, dated)".
+Anchor line to insert BEFORE:
+
+    ### DECISIONS (owner, dated)
+
+--- BEGIN PROPOSED TEXT ---
+
+### (k) The delegation-context split (#369): quality-positive, cost-negative, and it halves Anthropic's PARALLEL fan-out **[ADDED 2026-09-07 [NJPD]]**
+
+- **Verdict NO-SHIP against `8rugb`'s frozen rule** (`SHIP iff success LB >= -5 pp
+  AND delegation count within +/-30% of main`), applied verbatim to **103 valid
+  runs** (51 arm A / 52 arm B, both providers, foundation-ROOT containers).
+  **The deciding number is the `opus` delegation ratio, `0.4737`**, against a band
+  of `[0.70, 1.30]`. Arms: `a0decc6` (merge-base) vs `3d676d6` (PR #369).
+- **The split is NOT worse — on every quality and cost measure it is better.**
+  Success **32/51 (62.75%) vs 39/52 (75.00%), diff +12.25 pp for the split**;
+  S3 score `terra` **75.00 -> 84.04**, `opus` 80.88 -> 79.92 (tied);
+  $/run `opus` **$6.5354 -> $5.8924 (-9.8%)**, `terra` **$6.9969 -> $6.7286 (-3.8%)**.
+  Condition 1 fails on **interval width** (LB -5.55 pp vs a -5.00 floor), not on a
+  measured regression.
+- **The mechanism, and it is provider-specific: FAN-OUT WIDTH.** Spawns per
+  delegating turn on `opus` — arm A **{1:2, 2:18}, mean 1.90**; arm B
+  **{1:14, 2:2}, mean 1.125**. The burst distribution (spawns within 5 s) is
+  **identical** to the per-turn distribution, so **every Anthropic pair is
+  dispatched in ONE parallel tool-call batch**. The split collapses that pair to a
+  single spawn. `terra` moves the other way (per-turn mean 3.646 -> 4.632, max
+  12 -> 22) but its bursts are ~1.3 — **terra's delegations are SEQUENTIAL.** That
+  asymmetry is why the two providers moved in opposite directions in `8rugb`
+  (0.667 vs 1.188) and again here (0.4737 vs 1.1752).
+- **POOLED vs PER-PROVIDER decides this verdict, and nothing else does.**
+  Per-provider (pre-registered, gating): FAIL. Pooled: ratio **1.1131**, would
+  PASS. Pooling let a `terra` gain mask a 53% collapse in `opus` delegation —
+  exactly what the section-1 "Anthropic must not regress" constraint exists to
+  catch. Fix the choice before the numbers exist.
+- **`8rugb`'s n=73 power target was never sufficient, and this is the correction
+  that matters most.** `best-case LB = -(1 - wilson_lower(n,n))` is attained ONLY
+  at **100% success in BOTH arms**. Measured pooled success is **0.6893**, at which
+  **n=73 gives -14.80 pp, not -5.00**. Required n/arm for LB >= -5 pp:
+  **73 at p=1.00 ($990)**, **380 at p=0.857** (`8rugb`'s own observed 6/7,
+  **$5,154**), **655 at the measured p=0.6893 ($8,885)**. **Do not fund another
+  "buy the n" lane against S3 at a -5 pp floor** without either a higher-ceiling
+  scenario or a floor calibrated to the achievable interval. Caution: the LB is
+  **not monotone in n** at fixed observed rates (integer pass-counts re-round), so
+  a naive "what n would have passed" search returns unstable answers.
+- **A capture race that invalidated runs BY ARM — check for it in any lane using
+  this harness.** The CLI process exits before the session writer flushes that
+  turn's `prompt:complete`; pulling immediately captures 5 `prompt:submit` and only
+  4 `prompt:complete`. **The lag is arm-dependent: 0 s on arm A, 135-300 s on
+  arm B**, so 5 of 6 pre-fix invalid launches were arm B — a differentially
+  invalid sample that nothing in the run outputs would reveal. Fix: poll the
+  container for the 5th `prompt:complete` before pulling. **Validity 0.250
+  (8 launches) -> 0.9886 (88 launches).** Third instance in this program of a low
+  "validity rate" being substantially an INSTRUMENT problem (cf. `webu`/`i0cm`).
+- **Price warning for anyone re-using `webu`'s references.** On S3 with
+  foundation-root containers the measured price is `opus` **$6.5840** and `terra`
+  **$6.9804** per launch (n=89 valid) — **terra is the MORE expensive provider
+  here**, the opposite of `webu`'s $0.9386/$2.9236, because terra delegates 9-22
+  times per run and the sub-work routes to `sol`. `8rugb`'s own $4.1783/$5.9582
+  under-priced this lane by 34%. Quote a per-launch price for the scenario AND the
+  run count you are actually buying.
+- **Scope.** Arm A is the branch's **merge-base** `a0decc6`, not `main` @ `ed64999`:
+  `a0decc6..main` carries #368 (which rewrote foundation's ROOT system
+  instruction) and #371, so a main-vs-branch contrast would measure the split plus
+  the reversal of both. The verdict is about the split as a delta from its own
+  merge-base and does **not** certify `main + #369`.
+- **Noted, not fixed:** the branch deletes `context/agents/delegation-instructions.md`;
+  any external bundle `@`-mentioning that path breaks.
+- **`anchors` cannot see this treatment at all** — it mounts `tool-delegate`
+  directly and carries zero references to `behaviors/agents.yaml`, where the
+  change lives. **A foundation-ROOT container is required**; the standard eval
+  container is blind to it.
+- Spend **$652.71** of an $880 authority, 96 launches, 89 valid, 4 DTUs, all
+  destroyed. Pre-registration `68b3b68`; stop decision `b144705`.
+
+--- END PROPOSED TEXT ---
+
+Also proposed, for section 2(h) "Cross-source conflicts you will hit":
+
+| 12 | `8rugb` power calc "n=73 -> -5.00 pp" vs [NJPD]'s "n=73 -> -14.80 pp" | **Not a conflict — different assumptions, and [NJPD] is the one that matches the data.** -5.00 is the bound at 100% success in both arms; -14.80 is the bound at the measured 0.6893. Quote the success rate with any power target. |
