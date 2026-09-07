@@ -1,0 +1,81 @@
+{
+  "source": "/home/bkrabach/dev/openai-evals-team-ci/.amplifier/evaluation/treatment-validation/20260906-webu-phase2",
+  "table": {
+    "t0": {
+      "write_file": {
+        "reach": "3/10",
+        "role_tool": 12,
+        "tool_pre": 12,
+        "webu_published": [
+          3,
+          12
+        ]
+      },
+      "edit_file": {
+        "reach": "4/10",
+        "role_tool": 24,
+        "tool_pre": 24,
+        "webu_published": [
+          4,
+          24
+        ]
+      },
+      "delegate": {
+        "reach": "4/10",
+        "role_tool": 5,
+        "tool_pre": 6,
+        "webu_published": [
+          4,
+          6
+        ]
+      },
+      "apply_patch": {
+        "reach": "8/10",
+        "role_tool": 41,
+        "tool_pre": 41,
+        "webu_published": [
+          8,
+          41
+        ]
+      }
+    },
+    "t1": {
+      "write_file": {
+        "reach": "0/10",
+        "role_tool": 0,
+        "tool_pre": 0,
+        "webu_published": [
+          0,
+          0
+        ]
+      },
+      "edit_file": {
+        "reach": "0/10",
+        "role_tool": 0,
+        "tool_pre": 0,
+        "webu_published": [
+          0,
+          0
+        ]
+      },
+      "delegate": {
+        "reach": "0/10",
+        "role_tool": 0,
+        "tool_pre": 0,
+        "webu_published": [
+          0,
+          0
+        ]
+      },
+      "apply_patch": {
+        "reach": "10/10",
+        "role_tool": 58,
+        "tool_pre": 58,
+        "webu_published": [
+          10,
+          58
+        ]
+      }
+    }
+  }
+}

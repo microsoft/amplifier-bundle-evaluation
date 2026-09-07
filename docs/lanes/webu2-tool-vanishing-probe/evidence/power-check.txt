@@ -1,0 +1,12 @@
+PER-TOOL Poisson P(inside +/-30% | perfect restoration), n=6:
+  write_file   lambda=  7.2  P=0.534
+  edit_file    lambda= 14.4  P=0.709
+  delegate     lambda=  3.6  P=0.404
+  apply_patch  lambda= 24.6  P=0.844
+
+AGGREGATE-of-three bootstrap P(clause 1 PASSES | perfect restoration), n=6: 0.353
+control P(run uses >=1 of the three) = 0.60; P(arm b shows >=1 such run | restored) = 0.996
+  Fisher 2-tailed armB 3/6 vs armA 0/6: p=0.1818
+  Fisher 2-tailed armB 4/6 vs armA 0/6: p=0.0606
+  Fisher 2-tailed armB 5/6 vs armA 0/6: p=0.0152
+  Fisher 2-tailed armB 6/6 vs armA 0/6: p=0.0022
