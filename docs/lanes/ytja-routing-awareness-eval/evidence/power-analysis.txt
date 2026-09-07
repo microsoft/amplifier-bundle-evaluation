@@ -1,0 +1,37 @@
+=== BEST-CASE (perfect agreement) Newcombe bound on (lean - stock) ===
+ obs/arm     hidden LB (both n/n)    control UB (both 0/n)
+      25                  -13.32pp                   13.32pp
+      50                   -7.13pp                    7.13pp
+      75                   -4.87pp                    4.87pp
+      80                   -4.58pp                    4.58pp
+     100                   -3.70pp                    3.70pp
+     146                   -2.56pp                    2.56pp
+     150                   -2.50pp                    2.50pp
+     292                   -1.30pp                    1.30pp
+
+SMALLEST obs/arm satisfying hidden-reach >= -5.00pp on the LB : n=73  (LB=-5.00pp)
+SMALLEST obs/arm satisfying over-reach   <= +5.00pp on the UB : n=73  (UB=5.00pp)
+
+=== the goal's registered design ===
+hidden : 10 prompts x n=5 = 50 obs/arm/provider
+control:  5 prompts x n=5 = 25 obs/arm/provider
+  hidden  best-case LB @50 obs = -7.13pp  -> FAIL vs -5pp
+  control best-case UB @25 obs = +13.32pp -> FAIL vs +5pp
+
+=== n PER PROMPT required (per provider, per arm) ===
+  hidden : 73 obs / 10 prompts = n=8 per prompt  -> 80 obs
+  control: 73 obs /  5 prompts = n=15 per prompt  -> 75 obs
+  launches per arm per provider = 155
+  x 2 arms x 2 providers = 620 launches
+  x 3 arms x 2 providers = 930 launches
+
+=== POOLED (2 providers) variant ===
+  pooled needs the same 73 obs/arm TOTAL, i.e. n=4 per prompt per provider (10 prompts x 2 providers)
+  hidden  n=4/prompt/provider -> 80 obs/arm ; control n=8/prompt/provider -> 80 obs/arm
+  launches per arm = 160; x2 arms = 320
+
+=== COLLAPSE DETECTION (Fisher exact, one-sided) at small n ===
+  n= 5/prompt/arm: stock 5/5 -> lean 0/5: p=0.00397 | stock 5/5 -> lean 2/5: p=0.08333
+  n= 6/prompt/arm: stock 6/6 -> lean 0/6: p=0.00108 | stock 6/6 -> lean 3/6: p=0.09091
+  n= 8/prompt/arm: stock 8/8 -> lean 0/8: p=0.00008 | stock 8/8 -> lean 4/8: p=0.03846
+  n=10/prompt/arm: stock 10/10 -> lean 0/10: p=0.00001 | stock 10/10 -> lean 5/10: p=0.01625

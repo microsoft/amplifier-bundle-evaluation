@@ -1,0 +1,156 @@
+{
+  "schema": "ytja-routing-awareness/v1",
+  "registered_utc": "2026-09-07",
+  "item": "model_performance-ytja",
+  "grading": {
+    "source": "events.jsonl tool:post entries (the EXECUTED-RESULT entry), cross-checked against transcript.jsonl role:\"tool\" entries",
+    "never": "thinking-text mentions (content_block type=thinking) are NEVER counted, per webu's first-recompute failure",
+    "N": 4,
+    "capability_reach_tools": ["delegate", "load_skill", "mode"],
+    "hidden_pass": "the FIRST capability-reach among the first N=4 tool:post entries has target == expected_target or target in equivalence_set",
+    "hidden_fail": "no capability reach in the first N=4 tool:post entries, OR the first reach targets something outside the equivalence set",
+    "control_pass": "ZERO delegate and ZERO load_skill tool:post entries anywhere in the run",
+    "target_extraction": {
+      "delegate": "data.tool_input.agent",
+      "load_skill": "data.tool_input.skill_name (or .list/.search/.info form -> recorded as load_skill:<op>)",
+      "mode": "data.tool_input.name"
+    }
+  },
+  "hidden": [
+    {
+      "id": "H1",
+      "prompt": "Make sure this works the way a real user would actually hit it.",
+      "capability_never_named": "Digital Twin Universe / isolated realistic environment",
+      "expected_target": "digital-twin-universe:dtu-profile-builder",
+      "equivalence_set": [
+        "digital-twin-universe:dtu-profile-builder",
+        "amplifier-tester:setup-digital-twin",
+        "amplifier-tester:validator",
+        "load_skill:digital-twin-universe"
+      ],
+      "source": "goal-given (1 of 5)"
+    },
+    {
+      "id": "H2",
+      "prompt": "Yesterday's session won't resume and the list just says unnamed.",
+      "capability_never_named": "context-intelligence / session repair",
+      "expected_target": "context-intelligence:session-navigator",
+      "equivalence_set": [
+        "context-intelligence:session-navigator",
+        "load_skill:context-intelligence-session-navigation",
+        "load_skill:session-debug",
+        "app-cli:cli-expert"
+      ],
+      "explicitly_not": "reading events.jsonl by hand with read_file/bash/grep",
+      "source": "goal-given (2 of 5)"
+    },
+    {
+      "id": "H3",
+      "prompt": "What does Ctrl-J do in here?",
+      "capability_never_named": "app-cli CLI expert",
+      "expected_target": "app-cli:cli-expert",
+      "equivalence_set": ["app-cli:cli-expert"],
+      "source": "goal-given (3 of 5)"
+    },
+    {
+      "id": "H4",
+      "prompt": "I want a throwaway git server so I can try a risky rebase without wrecking anything.",
+      "capability_never_named": "gitea skill",
+      "expected_target": "load_skill:gitea",
+      "equivalence_set": ["load_skill:gitea"],
+      "source": "goal-given (4 of 5)"
+    },
+    {
+      "id": "H5",
+      "prompt": "Switch to a cheaper model for this next bit.",
+      "capability_never_named": "provider / routing / model switching",
+      "expected_target": "app-cli:cli-expert",
+      "equivalence_set": ["app-cli:cli-expert", "load_skill:amplifier-config"],
+      "source": "goal-given (5 of 5)"
+    },
+    {
+      "id": "H6",
+      "prompt": "Something is wrong: the service returns a 500 on roughly every third request and I cannot see why.",
+      "capability_never_named": "debugger agent",
+      "expected_target": "anchors:debugger",
+      "equivalence_set": ["anchors:debugger"],
+      "source": "lane-designed, keyed to anchors:debugger's own USE WHEN line"
+    },
+    {
+      "id": "H7",
+      "prompt": "I have no idea how this repo hangs together. Give me the lay of the land across the modules.",
+      "capability_never_named": "explorer agent",
+      "expected_target": "anchors:explorer",
+      "equivalence_set": ["anchors:explorer", "anchors-amp-dev:amplifier-dev-expert"],
+      "source": "lane-designed, keyed to anchors:explorer's own USE WHEN line"
+    },
+    {
+      "id": "H8",
+      "prompt": "Before I write any of this, I want someone to poke holes in the approach.",
+      "capability_never_named": "architect agent / adversarial review skills",
+      "expected_target": "anchors:architect",
+      "equivalence_set": [
+        "anchors:architect",
+        "load_skill:tester-breaker",
+        "load_skill:cranky-old-sam",
+        "load_skill:crusty-old-engineer",
+        "load_skill:council",
+        "load_skill:council-here"
+      ],
+      "source": "lane-designed, keyed to anchors:architect's own USE WHEN line"
+    },
+    {
+      "id": "H9",
+      "prompt": "Push this up and get it in front of the team for review.",
+      "capability_never_named": "git-ops agent",
+      "expected_target": "anchors:git-ops",
+      "equivalence_set": ["anchors:git-ops"],
+      "source": "lane-designed, keyed to anchors:git-ops's own USE WHEN line"
+    },
+    {
+      "id": "H10",
+      "prompt": "I'm adding a new repo to the ecosystem. What order do things need to land in?",
+      "capability_never_named": "amplifier-dev-expert agent",
+      "expected_target": "anchors-amp-dev:amplifier-dev-expert",
+      "equivalence_set": ["anchors-amp-dev:amplifier-dev-expert", "anchors:architect"],
+      "source": "lane-designed, keyed to amplifier-dev-expert's own USE WHEN line (repo dependency order, safe push order)"
+    }
+  ],
+  "controls": [
+    {
+      "id": "C1",
+      "prompt": "Rename the variable `cfg` to `config` throughout /root/work/src/app.py.",
+      "correct_behaviour": "edit_file / bash / apply_patch on one known file",
+      "over_reach": "any delegate or load_skill call",
+      "source": "goal-given (1 of 5)"
+    },
+    {
+      "id": "C2",
+      "prompt": "Summarize /root/work/README.md for me.",
+      "correct_behaviour": "read_file then answer",
+      "over_reach": "any delegate or load_skill call",
+      "source": "goal-given (2 of 5)"
+    },
+    {
+      "id": "C3",
+      "prompt": "Add a one-line docstring to the run() function in /root/work/src/app.py.",
+      "correct_behaviour": "read_file + edit_file",
+      "over_reach": "any delegate or load_skill call",
+      "source": "lane-designed"
+    },
+    {
+      "id": "C4",
+      "prompt": "What Python version does this project require? Check /root/work/pyproject.toml.",
+      "correct_behaviour": "read_file then answer",
+      "over_reach": "any delegate or load_skill call",
+      "source": "lane-designed"
+    },
+    {
+      "id": "C5",
+      "prompt": "Fix the typo 'recieve' in /root/work/README.md.",
+      "correct_behaviour": "edit_file",
+      "over_reach": "any delegate or load_skill call",
+      "source": "lane-designed"
+    }
+  ]
+}
