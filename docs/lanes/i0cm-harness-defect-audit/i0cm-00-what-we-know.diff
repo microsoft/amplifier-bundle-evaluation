@@ -1,0 +1,85 @@
+# i0cm — PROPOSED diff for ai-notes/00-what-we-know.md   (lane i0cm-harness-defect-audit)
+#
+# THIS LANE DID NOT EDIT THE SHARED FILE. The manager applies this.
+#
+# Apply from the EVALS REPO ROOT (/home/bkrabach/dev/openai-evals-team-ci):
+#   git apply --check <this file>     # dry run — MUST pass before applying
+#   git apply         <this file>
+#
+# Do NOT use 'patch --fuzz'. Generated against 00-what-we-know.md at:
+#   md5 6f67aa5fc718ad94887a28b050657088   (389 lines)
+# If that md5 no longer matches, regenerate rather than force-apply.
+#
+--- a/ai-notes/00-what-we-know.md
++++ b/ai-notes/00-what-we-know.md
+@@ -384,6 +384,67 @@
+ **HARNESS DEFECT, affects every lane using the S3 scripted driver:** `scripted_driver.py`'s
+ `session_continuity_ok` greps each turn for `Session ID: <sid>` but `--resume` prints `Resuming
+ session: <sid>` => **false for 14/14 runs of BOTH arms** while every root session carried 5
+-`prompt:complete`. **Taken at face value it voids 100% of runs of any lane using this driver.** Read
+-continuity from the printed ids + the `prompt:complete` count instead. Second defect: turn stdout
+-capture can return **empty** on large turns (`B-oai-01` turns 4-5) while the container executed them.
++`prompt:complete`. Read continuity from the printed ids + the `prompt:complete` count instead.
++Second defect: turn stdout capture can return **empty** on large turns (`B-oai-01` turns 4-5) while
++the container executed them. **Both defects are now ADJUDICATED in (q): REAL, and they void
++nothing** -- the "voids 100% of runs" reading is REFUTED there, and the real cost turned out to be
++the opposite one.
++
++### (q) The S3 continuity flag is a CONSTANT FALSE: real defect, zero voided results, one MASKED break **[ADDED 2026-09-06 [i0cm]]**
++
++`8rugb`'s claim that the flag "taken at face value voids 100% of runs of any lane using this driver"
++is **REAL as a defect and REFUTED as a blast radius**, adjudicated at **$0** over the existing
++captures.
++
++**The flag has never once been true.** Across **151 driver records** in **9 capture roots**
++(`dialin`, `rebaseline`, `threeknob`, `161-presets`, `j0u`, `ytg`, `h7n`, `8rugb`, `otr-armb`),
++`session_continuity_ok` is `false` **151/151**. A field that is constant across every run of every
++arm carries **zero discriminating information**: it cannot have moved any comparison, and any lane
++that had gated on it would have had **0 valid runs and published nothing**. All 9 roots published.
++**No lane ever dropped, re-ran, or invalidated a run because of it** -- and the artifact was already
++documented, in `scenarios/s3/RESULTS.md`'s own "Honest caveats" (all 71 copies), in
++`20260901-rebaseline/REPORT.md`, in `20260901-threeknob/LEG-B-REPORT.md`, and worked around
++independently twice (`remeasure_s3.sh`'s `resume_sid_consistent`; `8rugb`'s `summarize_run.py`).
++
++**Re-run with the corrected check, 148/151 are continuous.** The 3 that are not:
++`rebaseline/val-rb-oai-sol-xhigh-s3-{01,02}` (last turn TIMEOUT -- already excluded by
++`turns_done != 5`), and **one genuine break nobody saw**:
++**`threeknob/runs/val-tk-sol-xhigh-s3-02` ran turns 1-4 in `1f19b7ad...` and turn 5 in
++`8839b22c...`** -- a session that appears **nowhere in the capture** -- while the root session file
++carries **4** `prompt:complete`, not 5. It scored **90/100, pass=True**, and was counted.
++
++**That is the actual cost of this defect, and it is the inverse of the claim.** The flag did not void
++valid runs; it **cried wolf on all 151, so one real break was indistinguishable from the noise.** A
++constant alarm is not a conservative alarm.
++
++**Every affected conclusion STANDS. Nothing is VOID; nothing needs a re-run.**
++
++| conclusion | verdict | why |
++|---|---|---|
++| (c) three-knob frontier [threeknob, 64 S3 runs] | **STANDS** | 63/64 continuous. Dropping the one broken run leaves the `sol-xhigh` S3 median at **90 either way** (100/90/80 -> 100/80); no headline claim rests on `sol-xhigh` S3 (the sol counter-example in (c) is stated on S1). Pass count moves 2/3 -> 1/2, stated for honesty. |
++| (m) knob-consistent preset ENGAGES [h7n, otr-armb] | **STANDS** | 1/1 and 1/1 continuous. |
++| (p) delegation-context split [8rugb] | **STANDS** | 14/14 continuous, both arms; the flag was false for both arms equally, so the relative comparison never depended on it. |
++| `#55`'s basis [j0u-knobrouting] | **STANDS** | 10/10 continuous. |
++| rebaseline / dialin / 161-presets / ytg baselines | **STANDS** | 18/18, 19/19, 8/8 continuous; rebaseline's 2 exceptions are TIMEOUTs already excluded on `turns_done`. |
++
++**The second defect (empty turn stdout) is also real and also inert.** Corpus-wide it hit **6 runs /
++10 turns**, every one **openai** (5 of the 6 in `8rugb`; the other `threeknob/val-tk-sol-high-s3-03`)
++-- broader than the single run 8rugb reported. It can only touch `d_evidence`, the one dimension of
++10/100 that reads the transcript. **Every affected run scored `d_evidence` 10/10.** The 16 runs in
++the corpus that scored `d_evidence` 0 all have full, non-empty transcripts -- a different cause. **It
++has never cost a single point.**
++
++**`s5-crac` and `s7-retention-headroom` are NOT affected.** They carry the same `Session ID:` regex
++but compute no continuity flag, and take the sid from **turn 1 only** -- which does print
++`Session ID:`. Their `--resume` targeting, `--root-sid` grading, and boundary counting are correct.
++
++**The rule this buys:** a validity flag that is constant across the whole corpus is not evidence of
++validity **or** of invalidity -- it is an uncalibrated instrument, and it must be checked against a
++value whose answer is already known before any run is judged by it. Same family as S2a's vacuous
++Gate 3 and the unsatisfiable condition in (p): **an instrument that cannot come out both ways has
++not been tested.**
++
++Fix + fail-before test (which fails on the current driver, passes on the patched one, and still
++returns **False** for `val-tk-sol-xhigh-s3-02`) ship as lane artifacts under
++`amplifier-bundle-evaluation/docs/lanes/i0cm-harness-defect-audit/`. **The driver itself lives in
++this repo, which the lane does not own -- it edited nothing here.**
