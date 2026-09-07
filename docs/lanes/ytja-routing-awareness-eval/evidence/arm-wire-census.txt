@@ -1,0 +1,57 @@
+# Arm wire census — captured from each container's own llm:request.data.raw (haiku warm-up run)
+# Captured 2026-09-07T17:09:52Z BEFORE any graded run.
+########## ytja-stock ##########
+AGENTS(12): amplifier-tester:setup-digital-twin,amplifier-tester:validator,anchors-amp-dev:amplifier-dev-expert,anchors:architect,anchors:builder,anchors:debugger,anchors:explorer,anchors:git-ops,anchors:researcher,app-cli:cli-expert,context-intelligence:session-navigator,digital-twin-universe:dtu-profile-builder
+PREAMBLE_CHARS 1192
+DELEG_CHARS 11800
+LOAD_SKILL_CHARS 1647
+SKILLS_IN_SYSTEM(51): digital-twin-universe,tester-breaker,adapt-skill,amplifier-config,amplifier-tool-leverage-patterns,auth-tls-patterns,bet-sizer,bundle-to-dot,cli-packaging-patterns,config-state-patterns,container-orchestration-patterns,context-intelligence-session-navigation,councilify,cranky-old-sam,creating-amplifier-modules,crusty-old-engineer,file-ipc-patterns,gitea,goal-batch,goalify,http-service-patterns,image-vision,instance-storage-patterns,intent-keeper,monitor,msgraph-integration-patterns,one-line-installer-patterns,outcome-cartographer,outcomist,per-repo-conventions,personafy,plugin-discovery-patterns,positioning-critic,react-microfrontend-patterns,restless-old-brian,role-definitions,self-managing-tool-patterns,skillify,skills-assist,ten-lane-highway,user-advocate,verification-discipline,wayfinder-pack,wayfinder-scout,code-review,council,council-here,mass-change,product-council,product-council-here,session-debug
+INSTR_CHARS 45794 TOOLS_CHARS 38542
+TOOLDESC load_skill 1647
+TOOLDESC delegate 11800
+TOOLDESC read_file 1074
+TOOLDESC write_file 867
+TOOLDESC edit_file 1345
+TOOLDESC bash 1997
+TOOLDESC web_search 30
+TOOLDESC web_fetch 632
+TOOLDESC grep 1365
+TOOLDESC glob 904
+TOOLDESC todo 667
+TOOLDESC apply_patch 131
+TOOLDESC mode 198
+TOOLDESC recipes 1788
+
+########## ytja-lean ##########
+AGENTS(12): amplifier-tester:setup-digital-twin,amplifier-tester:validator,anchors-amp-dev:amplifier-dev-expert,anchors:architect,anchors:builder,anchors:debugger,anchors:explorer,anchors:git-ops,anchors:researcher,app-cli:cli-expert,context-intelligence:session-navigator,digital-twin-universe:dtu-profile-builder
+PREAMBLE_CHARS 940
+DELEG_CHARS 11548
+LOAD_SKILL_CHARS 1647
+SKILLS_IN_SYSTEM(51): digital-twin-universe,tester-breaker,adapt-skill,amplifier-config,amplifier-tool-leverage-patterns,auth-tls-patterns,bet-sizer,bundle-to-dot,cli-packaging-patterns,config-state-patterns,container-orchestration-patterns,context-intelligence-session-navigation,councilify,cranky-old-sam,creating-amplifier-modules,crusty-old-engineer,file-ipc-patterns,gitea,goal-batch,goalify,http-service-patterns,image-vision,instance-storage-patterns,intent-keeper,monitor,msgraph-integration-patterns,one-line-installer-patterns,outcome-cartographer,outcomist,per-repo-conventions,personafy,plugin-discovery-patterns,positioning-critic,react-microfrontend-patterns,restless-old-brian,role-definitions,self-managing-tool-patterns,skillify,skills-assist,ten-lane-highway,user-advocate,verification-discipline,wayfinder-pack,wayfinder-scout,code-review,council,council-here,mass-change,product-council,product-council-here,session-debug
+INSTR_CHARS 45446 TOOLS_CHARS 38276
+TOOLDESC load_skill 1647
+TOOLDESC delegate 11548
+TOOLDESC read_file 1074
+TOOLDESC write_file 867
+TOOLDESC edit_file 1345
+TOOLDESC bash 1997
+TOOLDESC web_search 30
+TOOLDESC web_fetch 632
+TOOLDESC grep 1365
+TOOLDESC glob 904
+TOOLDESC todo 667
+TOOLDESC apply_patch 131
+TOOLDESC mode 198
+TOOLDESC recipes 1788
+
+########## tree identity ##########
+--- ytja-stock ---
+ed64999d0be162cfe18a11f675fcc44538327f7c
+1
+1358 /root/.amplifier/cache/amplifier-foundation-c909465861f9d6ce/bundles/anchors/context/system.md
+
+--- ytja-lean ---
+7771ad22443fad4d8a881f3157285868a16bf7d1
+0
+1142 /root/.amplifier/cache/amplifier-foundation-c909465861f9d6ce/bundles/anchors/context/system.md
+

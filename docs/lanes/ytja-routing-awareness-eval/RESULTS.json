@@ -1,0 +1,495 @@
+{
+  "per_prompt": {
+    "H1|opus": {
+      "kind": "hidden",
+      "stock": [
+        0,
+        8
+      ],
+      "lean": [
+        0,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "H1|terra": {
+      "kind": "hidden",
+      "stock": [
+        1,
+        8
+      ],
+      "lean": [
+        2,
+        8
+      ],
+      "fisher_p": 0.9,
+      "degenerate": false
+    },
+    "H2|opus": {
+      "kind": "hidden",
+      "stock": [
+        0,
+        8
+      ],
+      "lean": [
+        0,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "H2|terra": {
+      "kind": "hidden",
+      "stock": [
+        8,
+        8
+      ],
+      "lean": [
+        8,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "H3|opus": {
+      "kind": "hidden",
+      "stock": [
+        8,
+        8
+      ],
+      "lean": [
+        8,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "H3|terra": {
+      "kind": "hidden",
+      "stock": [
+        8,
+        8
+      ],
+      "lean": [
+        8,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "H4|opus": {
+      "kind": "hidden",
+      "stock": [
+        8,
+        8
+      ],
+      "lean": [
+        8,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "H4|terra": {
+      "kind": "hidden",
+      "stock": [
+        8,
+        8
+      ],
+      "lean": [
+        8,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "H5|opus": {
+      "kind": "hidden",
+      "stock": [
+        8,
+        8
+      ],
+      "lean": [
+        8,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "H5|terra": {
+      "kind": "hidden",
+      "stock": [
+        8,
+        8
+      ],
+      "lean": [
+        8,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "H6|opus": {
+      "kind": "hidden",
+      "stock": [
+        0,
+        8
+      ],
+      "lean": [
+        0,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "H6|terra": {
+      "kind": "hidden",
+      "stock": [
+        0,
+        8
+      ],
+      "lean": [
+        0,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "H7|opus": {
+      "kind": "hidden",
+      "stock": [
+        0,
+        8
+      ],
+      "lean": [
+        0,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "H7|terra": {
+      "kind": "hidden",
+      "stock": [
+        0,
+        8
+      ],
+      "lean": [
+        0,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "H8|opus": {
+      "kind": "hidden",
+      "stock": [
+        0,
+        8
+      ],
+      "lean": [
+        0,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "H8|terra": {
+      "kind": "hidden",
+      "stock": [
+        1,
+        8
+      ],
+      "lean": [
+        0,
+        8
+      ],
+      "fisher_p": 0.5,
+      "degenerate": false
+    },
+    "H9|opus": {
+      "kind": "hidden",
+      "stock": [
+        0,
+        8
+      ],
+      "lean": [
+        0,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "H9|terra": {
+      "kind": "hidden",
+      "stock": [
+        0,
+        8
+      ],
+      "lean": [
+        0,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "H10|opus": {
+      "kind": "hidden",
+      "stock": [
+        0,
+        8
+      ],
+      "lean": [
+        0,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "H10|terra": {
+      "kind": "hidden",
+      "stock": [
+        8,
+        8
+      ],
+      "lean": [
+        8,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "C1|opus": {
+      "kind": "control",
+      "stock": [
+        8,
+        8
+      ],
+      "lean": [
+        8,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "C1|terra": {
+      "kind": "control",
+      "stock": [
+        8,
+        8
+      ],
+      "lean": [
+        8,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "C2|opus": {
+      "kind": "control",
+      "stock": [
+        8,
+        8
+      ],
+      "lean": [
+        8,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "C2|terra": {
+      "kind": "control",
+      "stock": [
+        8,
+        8
+      ],
+      "lean": [
+        8,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "C3|opus": {
+      "kind": "control",
+      "stock": [
+        8,
+        8
+      ],
+      "lean": [
+        8,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "C3|terra": {
+      "kind": "control",
+      "stock": [
+        7,
+        8
+      ],
+      "lean": [
+        7,
+        8
+      ],
+      "fisher_p": 0.76667,
+      "degenerate": false
+    },
+    "C4|opus": {
+      "kind": "control",
+      "stock": [
+        8,
+        8
+      ],
+      "lean": [
+        8,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "C4|terra": {
+      "kind": "control",
+      "stock": [
+        8,
+        8
+      ],
+      "lean": [
+        8,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "C5|opus": {
+      "kind": "control",
+      "stock": [
+        8,
+        8
+      ],
+      "lean": [
+        8,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    },
+    "C5|terra": {
+      "kind": "control",
+      "stock": [
+        8,
+        8
+      ],
+      "lean": [
+        8,
+        8
+      ],
+      "fisher_p": 1.0,
+      "degenerate": true
+    }
+  },
+  "aggregate": {
+    "opus|hidden-reach": {
+      "stock": [
+        24,
+        80
+      ],
+      "lean": [
+        24,
+        80
+      ],
+      "diff_pp": 0.0,
+      "ci_pp": [
+        -13.99,
+        13.99
+      ]
+    },
+    "opus|control-pass (no over-reach)": {
+      "stock": [
+        40,
+        40
+      ],
+      "lean": [
+        40,
+        40
+      ],
+      "diff_pp": 0.0,
+      "ci_pp": [
+        -8.76,
+        8.76
+      ]
+    },
+    "terra|hidden-reach": {
+      "stock": [
+        42,
+        80
+      ],
+      "lean": [
+        42,
+        80
+      ],
+      "diff_pp": 0.0,
+      "ci_pp": [
+        -15.12,
+        15.12
+      ]
+    },
+    "terra|control-pass (no over-reach)": {
+      "stock": [
+        39,
+        40
+      ],
+      "lean": [
+        39,
+        40
+      ],
+      "diff_pp": 0.0,
+      "ci_pp": [
+        -10.58,
+        10.58
+      ]
+    },
+    "POOLED (not decisive)|hidden-reach": {
+      "stock": [
+        66,
+        160
+      ],
+      "lean": [
+        66,
+        160
+      ],
+      "diff_pp": 0.0,
+      "ci_pp": [
+        -10.67,
+        10.67
+      ]
+    },
+    "POOLED (not decisive)|control-pass (no over-reach)": {
+      "stock": [
+        79,
+        80
+      ],
+      "lean": [
+        79,
+        80
+      ],
+      "diff_pp": 0.0,
+      "ci_pp": [
+        -5.59,
+        5.59
+      ]
+    }
+  },
+  "spend_usd": 130.6017,
+  "runs": 480,
+  "valid": 480,
+  "holm": {
+    "H8|terra": 1.0,
+    "H1|terra": 1.0
+  },
+  "regressed": [],
+  "over_reach_flagged": []
+}
