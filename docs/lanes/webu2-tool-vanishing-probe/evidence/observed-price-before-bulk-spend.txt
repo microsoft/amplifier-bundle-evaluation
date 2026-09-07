@@ -1,0 +1,11 @@
+2gxp -- OBSERVED PER-RUN PRICE, stated BEFORE the bulk spend (goal Procedure 3; PREREG s8)
+Recorded 2026-09-07T05:08:46Z, after cycle 1 (a-01, b-01, c-01) and before the remaining 15 launches.
+
+  a-01  $0.7893   b-01  $0.8699   c-01  $0.6553      cycle-1 mean = $0.7715 / launch
+  achieved validity so far: 3 valid / 3 launched = 1.000
+
+  PREREG s8 arithmetic, re-checked against THIS lane's observed price:
+     6 runs x 3 arms x $0.7715 / 1.000 validity  =  $13.89   <=  $25    CLOSES
+     (the pre-registered figure used webu's $0.9386 => $16.89; the observed price is 17.8% lower)
+
+  Cycle-1 spend to date: $2.3145 of $25.  Remaining: $22.6855.

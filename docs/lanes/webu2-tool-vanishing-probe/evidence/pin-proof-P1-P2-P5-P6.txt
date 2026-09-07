@@ -1,0 +1,19 @@
+2gxp -- DTU pin proof, container p2gxp, captured 2026-09-07T04:53:55Z, BEFORE the first S3 run of this lane.
+PREREG a4506d3a96b5bee27eb16576e1aa859a67c6593a section 5.
+
+P-1  grep -c tool_search across the INSTALLED provider package .py files:
+     80  (webu measured 80; cal measured 0 at pre-v5co HEAD 94dd5ed)
+
+P-2  resolved commit of that install (git rev-parse HEAD in the cache checkout):
+     702b361a4d4d178da70cef96300591dc4015b9b1  (goal names 702b361a4d4d178da70cef96300591dc4015b9b1)
+
+P-5  context-simple resolved commit:
+     ee26d233ddc4f7db30eb77dbe94ff52561035a71
+     ee26d23 fix: compaction must not drop messages carrying loaded-tool state (break 5) — ported to today's head, re-measured (#37)
+
+P-6  mikb split-state trap -- every install path of each module on disk:
+     /root/.amplifier/cache/amplifier-module-context-simple-381762bb39b0b3fa/amplifier_module_context_simple
+     /root/.amplifier/cache/amplifier-module-provider-openai-4505f7c69a463081/amplifier_module_provider_openai
+     => exactly ONE path per module; no site-packages copy; split state ABSENT.
+
+P-3/P-4 are ON THE WIRE and are read out of the run captures by analyze.py (pins_on_wire).
