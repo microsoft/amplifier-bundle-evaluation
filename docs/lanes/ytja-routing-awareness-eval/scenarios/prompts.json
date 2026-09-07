@@ -6,7 +6,11 @@
     "source": "events.jsonl tool:post entries (the EXECUTED-RESULT entry), cross-checked against transcript.jsonl role:\"tool\" entries",
     "never": "thinking-text mentions (content_block type=thinking) are NEVER counted, per webu's first-recompute failure",
     "N": 4,
-    "capability_reach_tools": ["delegate", "load_skill", "mode"],
+    "capability_reach_tools": [
+      "delegate",
+      "load_skill",
+      "mode"
+    ],
     "hidden_pass": "the FIRST capability-reach among the first N=4 tool:post entries has target == expected_target or target in equivalence_set",
     "hidden_fail": "no capability reach in the first N=4 tool:post entries, OR the first reach targets something outside the equivalence set",
     "control_pass": "ZERO delegate and ZERO load_skill tool:post entries anywhere in the run",
@@ -19,7 +23,7 @@
   "hidden": [
     {
       "id": "H1",
-      "prompt": "Make sure this works the way a real user would actually hit it.",
+      "prompt": "I've got a small service in /root/work. Make sure it works the way a real user would actually hit it.",
       "capability_never_named": "Digital Twin Universe / isolated realistic environment",
       "expected_target": "digital-twin-universe:dtu-profile-builder",
       "equivalence_set": [
@@ -28,7 +32,9 @@
         "amplifier-tester:validator",
         "load_skill:digital-twin-universe"
       ],
-      "source": "goal-given (1 of 5)"
+      "source": "goal-given (1 of 5)",
+      "prompt_v1": "Make sure this works the way a real user would actually hit it.",
+      "amended": "A1"
     },
     {
       "id": "H2",
@@ -49,7 +55,9 @@
       "prompt": "What does Ctrl-J do in here?",
       "capability_never_named": "app-cli CLI expert",
       "expected_target": "app-cli:cli-expert",
-      "equivalence_set": ["app-cli:cli-expert"],
+      "equivalence_set": [
+        "app-cli:cli-expert"
+      ],
       "source": "goal-given (3 of 5)"
     },
     {
@@ -57,7 +65,9 @@
       "prompt": "I want a throwaway git server so I can try a risky rebase without wrecking anything.",
       "capability_never_named": "gitea skill",
       "expected_target": "load_skill:gitea",
-      "equivalence_set": ["load_skill:gitea"],
+      "equivalence_set": [
+        "load_skill:gitea"
+      ],
       "source": "goal-given (4 of 5)"
     },
     {
@@ -65,28 +75,40 @@
       "prompt": "Switch to a cheaper model for this next bit.",
       "capability_never_named": "provider / routing / model switching",
       "expected_target": "app-cli:cli-expert",
-      "equivalence_set": ["app-cli:cli-expert", "load_skill:amplifier-config"],
+      "equivalence_set": [
+        "app-cli:cli-expert",
+        "load_skill:amplifier-config"
+      ],
       "source": "goal-given (5 of 5)"
     },
     {
       "id": "H6",
-      "prompt": "Something is wrong: the service returns a 500 on roughly every third request and I cannot see why.",
+      "prompt": "The service in /root/work returns a 500 on roughly every third request and I cannot see why.",
       "capability_never_named": "debugger agent",
       "expected_target": "anchors:debugger",
-      "equivalence_set": ["anchors:debugger"],
-      "source": "lane-designed, keyed to anchors:debugger's own USE WHEN line"
+      "equivalence_set": [
+        "anchors:debugger"
+      ],
+      "source": "lane-designed, keyed to anchors:debugger's own USE WHEN line",
+      "prompt_v1": "Something is wrong: the service returns a 500 on roughly every third request and I cannot see why.",
+      "amended": "A1"
     },
     {
       "id": "H7",
-      "prompt": "I have no idea how this repo hangs together. Give me the lay of the land across the modules.",
+      "prompt": "Take /root/work. I have no idea how this repo hangs together. Give me the lay of the land across the modules.",
       "capability_never_named": "explorer agent",
       "expected_target": "anchors:explorer",
-      "equivalence_set": ["anchors:explorer", "anchors-amp-dev:amplifier-dev-expert"],
-      "source": "lane-designed, keyed to anchors:explorer's own USE WHEN line"
+      "equivalence_set": [
+        "anchors:explorer",
+        "anchors-amp-dev:amplifier-dev-expert"
+      ],
+      "source": "lane-designed, keyed to anchors:explorer's own USE WHEN line",
+      "prompt_v1": "I have no idea how this repo hangs together. Give me the lay of the land across the modules.",
+      "amended": "A1"
     },
     {
       "id": "H8",
-      "prompt": "Before I write any of this, I want someone to poke holes in the approach.",
+      "prompt": "I want to add API-key auth to the service in /root/work. Before I write any of this, I want someone to poke holes in the approach.",
       "capability_never_named": "architect agent / adversarial review skills",
       "expected_target": "anchors:architect",
       "equivalence_set": [
@@ -97,23 +119,34 @@
         "load_skill:council",
         "load_skill:council-here"
       ],
-      "source": "lane-designed, keyed to anchors:architect's own USE WHEN line"
+      "source": "lane-designed, keyed to anchors:architect's own USE WHEN line",
+      "prompt_v1": "Before I write any of this, I want someone to poke holes in the approach.",
+      "amended": "A1"
     },
     {
       "id": "H9",
-      "prompt": "Push this up and get it in front of the team for review.",
+      "prompt": "Push the changes in /root/work up and get them in front of the team for review.",
       "capability_never_named": "git-ops agent",
       "expected_target": "anchors:git-ops",
-      "equivalence_set": ["anchors:git-ops"],
-      "source": "lane-designed, keyed to anchors:git-ops's own USE WHEN line"
+      "equivalence_set": [
+        "anchors:git-ops"
+      ],
+      "source": "lane-designed, keyed to anchors:git-ops's own USE WHEN line",
+      "prompt_v1": "Push this up and get it in front of the team for review.",
+      "amended": "A1"
     },
     {
       "id": "H10",
-      "prompt": "I'm adding a new repo to the ecosystem. What order do things need to land in?",
+      "prompt": "I'm adding a new repo to the Amplifier ecosystem alongside /root/work. What order do things need to land in?",
       "capability_never_named": "amplifier-dev-expert agent",
       "expected_target": "anchors-amp-dev:amplifier-dev-expert",
-      "equivalence_set": ["anchors-amp-dev:amplifier-dev-expert", "anchors:architect"],
-      "source": "lane-designed, keyed to amplifier-dev-expert's own USE WHEN line (repo dependency order, safe push order)"
+      "equivalence_set": [
+        "anchors-amp-dev:amplifier-dev-expert",
+        "anchors:architect"
+      ],
+      "source": "lane-designed, keyed to amplifier-dev-expert's own USE WHEN line (repo dependency order, safe push order)",
+      "prompt_v1": "I'm adding a new repo to the ecosystem. What order do things need to land in?",
+      "amended": "A1"
     }
   ],
   "controls": [
@@ -152,5 +185,15 @@
       "over_reach": "any delegate or load_skill call",
       "source": "lane-designed"
     }
-  ]
+  ],
+  "amendment": {
+    "id": "A1",
+    "utc": "2026-09-07",
+    "reason": "PILOT probe (4 launches, $0.10, stock/terra) showed a referent-less hidden prompt ends the single-shot run with a CLARIFYING QUESTION and ZERO tool calls -- a degenerate cell that is uninformative in BOTH arms. H1 as written produced 1 request, 0 tool calls. Six hidden prompts gain a concrete referent (/root/work) so the run has something to act on. NO expected_target and NO equivalence_set changed; the named capability is still never named in any prompt. The 4 pilot launches are DISCARDED, not counted toward n.",
+    "pilot_runs_discarded": [
+      "stock-terra-H1-r01",
+      "stock-terra-C2-r01"
+    ],
+    "pilot_spend_usd": 0.1
+  }
 }

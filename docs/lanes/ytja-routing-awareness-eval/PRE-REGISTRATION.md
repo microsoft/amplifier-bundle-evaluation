@@ -256,3 +256,25 @@ that price is measured.** Nothing is substituted for arm 3.
   paid for three times.
 - **No default ships from this lane.** A finding that the lean head regressed routing and a
   finding that it did not are worth the same here.
+
+---
+
+## AMENDMENT A1 — 2026-09-07, after the PILOT probe, before any graded run
+
+**Disclosed, not silent.** The 4-launch pilot (stock/terra, $0.10) exposed an instrument defect,
+not a result: a hidden prompt with **no referent** ends a single-shot run with a **clarifying
+question and ZERO tool calls**. `H1` as originally written produced 1 request, 0 tool calls, and a
+thinking block reading *"I need to confirm the specific app, feature, URL, or path they're
+referring to"* — which is **correct model behaviour** and a **degenerate, uninformative cell in
+both arms**. That is `otr`'s failure mode arriving before the spend instead of after it.
+
+**What changed:** six hidden prompts (H1, H6, H7, H8, H9, H10) gain a concrete referent
+(`/root/work`). **Nothing else.** No `expected_target` changed, no `equivalence_set` changed, and
+the target capability is still **never named** in any prompt. The change is
+**outcome-independent**: it was made from a single stock-arm pilot, with no lean-arm data in
+existence, and it cannot favour either arm.
+
+**The 4 pilot launches are DISCARDED and counted toward n for nothing.** Their $0.10 is charged to
+the spend ledger anyway.
+
+Original prompt text is preserved per-prompt as `prompt_v1` in `scenarios/prompts.json`.
