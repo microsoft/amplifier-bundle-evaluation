@@ -278,3 +278,43 @@ existence, and it cannot favour either arm.
 the spend ledger anyway.
 
 Original prompt text is preserved per-prompt as `prompt_v1` in `scenarios/prompts.json`.
+
+---
+
+## G-PRICE — OBSERVED per-launch price, stated BEFORE the bulk spend
+
+Measured on **this eval's own single-prompt profile**, stock arm, 6 launches (H1/H3/C2 ×
+terra/opus), validity **6/6 = 1.000**, cost summed from `llm:response.data.usage.cost_usd` over
+each run's whole session tree (root + delegated sub-sessions):
+
+| | hidden mean | control mean |
+|---|---:|---:|
+| gpt-5.6-terra | **$0.3145** | **$0.0547** |
+| claude-opus-5 | **$0.4838** | **$0.1431** |
+
+Per-launch figures observed: terra H1 $0.4775 · H3 $0.1514 · C2 $0.0547; opus H1 $0.5786 ·
+H3 $0.3889 · C2 $0.1431. The probe mix (2 hidden : 1 control) is the design's own ratio
+(10:5), so the blend is not a favourable selection.
+
+**These are 3.0×–5.4× BELOW the item's reference prices** (terra $0.9386, opus $2.9236), because
+those were quoted for multi-turn S5/S7 scenarios and this eval's launch is one short prompt. Per
+the authoring rule, a price quoted for a different run shape is not reused — so this lane's own
+observed price is what the arithmetic below uses.
+
+**ARITHMETIC (stated before the spend):**
+
+```
+per rep = 2 arms x [ terra(10 x 0.3145 + 5 x 0.0547) + opus(10 x 0.4838 + 5 x 0.1431) ]
+        = 2 x [ 3.4180 + 5.5530 ]
+        = $17.94   (60 launches)
+
+n=3 -> $53.83   n=5 -> $89.71   n=8 -> $143.54     (+ $1.89 already spent)
+```
+
+**REGISTERED n AND STOPPING RULE — budget-only, fixed here.** Reps are added **uniformly across
+all 60 cells**, in rep order, targeting **n=8** (the per-prompt n the primary rule's hidden clause
+would need). The run stops when `cumulative_spend + projected_next_rep_cost > $185`
+($200 authority less a $15 reserve), **or** at n=8, whichever comes first.
+
+**n is chosen by budget, never by results.** No interim result may add, drop, or extend a cell.
+If the sweep stops below n=8 the achieved n is reported with its arithmetic.
