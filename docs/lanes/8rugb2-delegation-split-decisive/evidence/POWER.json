@@ -1,0 +1,31 @@
+{
+  "observed": {
+    "success_A": "32/51",
+    "success_B": "39/52",
+    "rate_A": 0.6275,
+    "rate_B": 0.75,
+    "rate_pooled": 0.6893
+  },
+  "LB_pp_now": -5.55,
+  "8rugb_power_calc_assumption": {
+    "formula": "best-case LB = -(1 - wilson_lower(n,n)) -- attained ONLY at 100% success in BOTH arms",
+    "n_73_best_case_LB_pp": -5.0,
+    "n_73_LB_pp_at_OBSERVED_rate": -14.8
+  },
+  "required_n_per_arm_for_LB_ge_-5pp": {
+    "at_success_rate_1.00_(8rugb's assumption)": 73,
+    "at_success_rate_0.857_(8rugb's own observed 6/7)": 380,
+    "at_success_rate_0.6893_(measured here)": 655
+  },
+  "cost_of_required_n": {
+    "at_success_rate_1.00_(8rugb's assumption)": "n=73/arm -> 146 runs x $6.7822 = $990.20",
+    "at_success_rate_0.857_(8rugb's own observed 6/7)": "n=380/arm -> 760 runs x $6.7822 = $5,154.47",
+    "at_success_rate_0.6893_(measured here)": "n=655/arm -> 1310 runs x $6.7822 = $8,884.68"
+  },
+  "measured_price_per_launch": {
+    "opus": 6.584,
+    "terra": 6.9804,
+    "blended_50_50": 6.7822
+  },
+  "njpd_spend_so_far": 652.71
+}

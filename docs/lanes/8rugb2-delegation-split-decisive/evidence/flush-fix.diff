@@ -1,0 +1,28 @@
+--- /home/bkrabach/dev/openai-evals-team-ci/.amplifier/evaluation/treatment-validation/20260906-njpd/run_cell.sh.pre-flushfix	2026-09-06 22:00:25.173820747 -0700
++++ /home/bkrabach/dev/openai-evals-team-ci/.amplifier/evaluation/treatment-validation/20260906-njpd/run_cell.sh	2026-09-06 22:00:25.181891785 -0700
+@@ -30,6 +30,25 @@
+ done
+ echo $(( $(date +%s) - t0 )) > "$OUT/host_wall.txt"
+ if [ -f "$OUT/driver_record.json" ]; then echo "  driver_record present after ${waited}s"; else echo "  DRIVER CAP HIT after ${waited}s"; fi
++echo "--- wait for the final prompt:complete to FLUSH before pulling (capture race) ---"
++# The CLI process exits before the session writer has flushed that turn's
++# prompt:complete: measured lag 100-200 s on this host. Pulling immediately
++# captures 5 prompt:submit and only 4 prompt:complete, which the PRE-REGISTERED
++# validity gate correctly rejects. This waits for the evidence to exist before
++# reading it. It can only make the capture more faithful -- a turn that never
++# completed still times out here and still fails the gate.
++prefer=""
++[ -f "$OUT/driver_record.json" ] && prefer="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("root_session_id") or "")' "$OUT/driver_record.json" 2>/dev/null)"
++pc=0; w=0
++if [ -n "$prefer" ]; then
++  while [ "$w" -lt 600 ]; do
++    pc=$(exec_c "cat /root/.amplifier/projects/*/sessions/$prefer/events.jsonl 2>/dev/null | grep -c '\"prompt:complete\"'" | tr -d '[:space:]')
++    case "$pc" in ''|*[!0-9]*) pc=0 ;; esac
++    [ "$pc" -ge 5 ] && break
++    sleep 15; w=$((w+15))
++  done
++fi
++echo "  prompt:complete=$pc after ${w}s (sid=$prefer)"
+ echo "--- grade (in container) ---"
+ [ -f "$OUT/transcript.txt" ] && adt file-push "$DTU" "$OUT/transcript.txt" /root/s3-transcript.txt >/dev/null 2>&1
+ exec_c 'cd /root && python3 /root/s3/grader.py --deliverables /root/s3-work --transcript /root/s3-transcript.txt --scenario-dir /root/s3 --out /root/s3-scorecard.json >/root/s3-grade.log 2>&1; echo GRADED'
