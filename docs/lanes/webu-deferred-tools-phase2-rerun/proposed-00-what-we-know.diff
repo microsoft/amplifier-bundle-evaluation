@@ -1,0 +1,84 @@
+# webu -- PROPOSED addition to ai-notes/00-what-we-know.md section 2.
+# NOT APPLIED BY THIS LANE (the goal forbids it). Apply from the EVALS REPO ROOT
+# (/home/bkrabach/dev/openai-evals-team-ci):
+#     git apply --check docs/lanes/webu-deferred-tools-phase2-rerun/proposed-00-what-we-know.diff
+#     git apply          <this file>
+# Generated against 00-what-we-know.md as of 2026-09-07.
+--- a/ai-notes/00-what-we-know.md
++++ b/ai-notes/00-what-we-know.md
+@@ -247,6 +247,75 @@
+ 
+ **Say it plainly, because it is the result:** everything measured was equally and correctly prompted, and
+ **nothing published changes.** That was worth $0 to establish rather than assume.
++
++### (r) Deferred tool loading measured END TO END: 33.7% off the head, containment proven live, and a D2-class substitution that is WORSE than the one that caused the revert **[ADDED 2026-09-07 [webu]]**
++
++**Phase 2 ran in full at its pre-registered n** — `t0`/`t1` S3 terra-medium **n=10 each** plus the mandatory
++`g0`/`g1` Anthropic guardrail **n=2 each**, all LIVE. **24 launches, 24 valid, achieved validity 1.000**,
++**$30.4669** of a separate owner-funded **$170** authority. Pre-registration `c37ad94` + addenda `ce4add3`,
++`d37487e`, `e8a7cdc`, each committed before the numbers it gates. Provider pinned and proven ON THE WIRE at
++`702b361` (80 grep hits in the installed package, `tool_search` + `defer_loading` in the request, `namespace`
++surviving the round trip, **0** `Missing namespace` 400s).
++
++- **G9 PASS, and larger than `cal` predicted.** Pinned `cache_read` **18,725 -> 12,411.5 tok = -6,313.5,
++  -33.7% of the head**, corroborated to **2 tokens** by `cache_write` at request 0. `cal`'s $0 census predicted
++  **4,540 tok / 24.6%** and was explicitly labelled `inferred` — it **under**-predicted by **39%**, in the
++  direction it said it would.
++- **But the head saving has a COLD-START PRICE nobody had measured.** The treatment adds **+3,760 tok of
++  NON-CACHEABLE billed prompt at request 0** (control: 3 tok), so the **cold request nets only -2,557** while
++  every request after it nets **-6,313**. Quote both numbers or the reader is misled.
++- **`12v`'s chars/4.627 method is INVALID on a namespaced tools block.** The wire payload ships every deferred
++  member's full description AND `parameters` schema (**38,516 chars**; `delegation` alone 14,466) while the
++  server bills 12,410. **A local byte count reads the 33.7% saving as a 2.4% LOSS.** Wire bytes and billed
++  prompt are the same population for a flat block and DIFFERENT populations under `tool_search`.
++- **The blocking Anthropic guardrail PASSES on a LIVE run** — 121 requests, 2 pairs, **8 real compaction
++  boundaries**: `tools` sha256 `561cd6fcbba28d79` identical at **53 of 53** indices, **0 divergences**; system
++  prompt **46,677 B both arms, delta +0 B**; cache share within **3.0 / 4.9 pts**; **re-warm = 1 request at
++  every boundary in both arms**; `ID_ONLY` **0**. `cal`'s re-scoped **G5b-prime** (absolute per-arm B1-B4)
++  passes 121/121. **T3 is not tripped.**
++- **`6ei`'s `E5_quality`, recorded NOT MEASURED and one of the two reasons PR 83 reverted PR 82, is now
++  MEASURED: PASS.** Largest single-constraint drop **1 of 10** (FAIL threshold >=2).
++- **G10 is PASS only on its strict-pass clause; its median clause is UNINFORMATIVE.** Both arms' S3 median is
++  **100** — the ceiling — so that clause is **not banked as no-harm**. Strict-pass **9/10 -> 8/10** lands
++  **exactly on** the "t0 - 1" threshold.
++- **The revert's OTHER reason recurs, and it is bigger.** The pre-registered D2 rule (bash standing in for a
++  file tool) **did NOT fire and moved protectively, 0.08 -> 0.00, -8 pp**. But `6ei`'s own D2 FORM ("reached in
++  static, not in deferred") applied to EVERY tool shows **`write_file` 3/10 -> 0/10, `edit_file` 4/10 -> 0/10,
++  `delegate` 4/10 -> 0/10**, absorbed by the ONE always-visible tool, `apply_patch` (**8/10 -> 10/10, +17
++  calls**). `6ei` lost **2 of 23** calls of one tool; this is **three tools at zero reach**. Note the
++  asymmetry: `read_file`, `grep` and `glob` are in the SAME deferred namespace and were discovered and used
++  normally — **only the tools with an always-visible substitute vanished.**
++- **`delegate` disappearing is the serious half, and S3 is structurally blind to it.** 6 calls across 4 control
++  runs, **0 across 10 treatment runs** (Fisher **p ~ 0.087**, suggestive not significant). The `delegation`
++  namespace was **never searched in 10 runs**. S3 does not need delegation, so the only quality instrument in
++  play cannot price what was lost — and delegation is this programme's load-bearing confounder (§2c).
++- **G4-prime PASS** (median **10** of 14 loaded; control 13). **G12 PASS** (**0** hits; 654 bare-token matches
++  excluded — the S3 scenario seeds provider config-validation SOURCE containing `InvalidRequestError`).
++  **G13 UNINFORMATIVE**: **0** compaction boundaries in any `t1` run, and `context-simple` **break 5** is still
++  unlanded (homeless across `v5co`, `cal` and `webu`). Never recorded PASS.
++- **G11 is advisory and its cost figure is NOT safe to bank**: mean $0.9991 -> $0.8782 (-12.1%), but the
++  control's expensive runs are its delegating ones, so the cost delta and the delegation loss are the same
++  observation.
++- **VERDICT: DON'T-BUILD as a default.** The flag stays the opt-in, default-off config it already is on `main`;
++  **G5a and G5b-prime belong in CI**. **The one measurement that would flip it is cheap:** an A/B on a scenario
++  that REQUIRES delegation, n=3/arm, with `delegate` reach as the pre-registered outcome — **6 launches ~ $5.63**
++  at this lane's observed price.
++- **Two programme-level corrections to prices this lane paid attention to.** Observed **$0.9386/terra S3
++  launch** against `EVAL-SPEC`'s $1.55 and the `webu` work item's $4.63 (that $4.63 came from a
++  delegation-heavy foundation-as-root configuration, `8rugb` $5.28-6.63). And **achieved validity was 1.000,
++  not 0.67** — with `i0cm`'s FIXED driver (md5 `dc307c50090b11d981eee44382668431`) `session_continuity_ok` was
++  true on **24/24**, where the pristine driver was false on 152/152. On this evidence the historical low
++  validity rate was substantially an INSTRUMENT problem (§2q).
++- **Harness defect, still live for every lane:** `_harness/configure_cell.py --max-tokens` **silently no-ops** —
++  `find_bundle_md()` returns `bundles/anchors-amp-dev/bundle.md` but `max_tokens: 300000` lives in
++  `bundles/anchors/bundle.md`; `patch_max_tokens()` then exits non-zero **on stderr** and every caller in this
++  programme pipes only stdout. Any lane that believed it lowered the compaction trigger this way **did not**.
++
++*(knob: `tool_search.mode` namespaced (T-5NS) · terra-medium @ S3 · **measured**, n=10/arm + 2/arm live
++Anthropic guardrail · `amplifier-bundle-evaluation@lane/webu-deferred-tools-phase2-rerun`
++`docs/lanes/webu-deferred-tools-phase2-rerun/FINDINGS.md`; captures
++`treatment-validation/20260906-webu-phase2/`; regenerate at $0 with that lane's `analyze.py`)*
++
+ 
+ ## 3. WHAT WOULD CHANGE OUR MIND
+ 
