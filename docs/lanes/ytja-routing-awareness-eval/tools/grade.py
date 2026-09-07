@@ -74,7 +74,9 @@ def tree_sessions(captures: Path, root_sid: str) -> list[Path]:
         par = None
         for e in load_events(dpath / "events.jsonl"):
             if e.get("event") == "session:start":
-                par = (e.get("data") or {}).get("parent_session_id") or (e.get("data") or {}).get("parent_id")
+                par = (e.get("data") or {}).get("parent_session_id") or (
+                    e.get("data") or {}
+                ).get("parent_id")
                 break
         parent[sid] = par
     keep = []
@@ -100,14 +102,23 @@ def grade_run(rec: dict, captures: Path, spec_by_id: dict, N: int) -> dict:
         par = None
         for e in evs:
             if e.get("event") == "session:start":
-                par = (e.get("data") or {}).get("parent_session_id") or (e.get("data") or {}).get("parent_id")
+                par = (e.get("data") or {}).get("parent_session_id") or (
+                    e.get("data") or {}
+                ).get("parent_id")
                 break
         if par is None:
             root = (sid, d, evs)
             break
     if root is None:
-        return {**{k: rec[k] for k in ("run_id", "arm", "provider", "prompt_id", "kind", "rep")},
-                "valid": False, "reason": "no root session captured", "cost_usd": 0.0}
+        return {
+            **{
+                k: rec[k]
+                for k in ("run_id", "arm", "provider", "prompt_id", "kind", "rep")
+            },
+            "valid": False,
+            "reason": "no root session captured",
+            "cost_usd": 0.0,
+        }
 
     sid, sdir, evs = root
     posts = [e for e in evs if e.get("event") == "tool:post"]
@@ -145,13 +156,24 @@ def grade_run(rec: dict, captures: Path, spec_by_id: dict, N: int) -> dict:
                 reqs += 1
 
     completed = any(e.get("event") == "prompt:complete" for e in evs)
-    valid = completed and (len(posts) > 0 or any(e.get("event") == "llm:response" for e in evs))
+    valid = completed and (
+        len(posts) > 0 or any(e.get("event") == "llm:response" for e in evs)
+    )
 
-    out = {**{k: rec[k] for k in ("run_id", "arm", "provider", "prompt_id", "kind", "rep")},
-           "root_sid": sid, "valid": valid, "n_tool_post": len(posts),
-           "n_transcript_role_tool": trole, "thinking_mentions": thinking_mentions,
-           "tool_seq": [t for t, _ in seq][:12], "cost_usd": round(cost, 6), "requests": reqs,
-           "wall_s": rec.get("wall_s")}
+    out = {
+        **{
+            k: rec[k] for k in ("run_id", "arm", "provider", "prompt_id", "kind", "rep")
+        },
+        "root_sid": sid,
+        "valid": valid,
+        "n_tool_post": len(posts),
+        "n_transcript_role_tool": trole,
+        "thinking_mentions": thinking_mentions,
+        "tool_seq": [t for t, _ in seq][:12],
+        "cost_usd": round(cost, 6),
+        "requests": reqs,
+        "wall_s": rec.get("wall_s"),
+    }
 
     if rec["kind"] == "control":
         over = [t for t, _ in seq if t in ("delegate", "load_skill")]
@@ -185,7 +207,9 @@ def main() -> int:
 
     spec = json.loads(Path(a.prompts).read_text())
     by_id = {p["id"]: p for p in spec["hidden"]}
-    recs = [json.loads(l) for l in Path(a.runs).read_text().splitlines() if l.strip()]
+    recs = [
+        json.loads(ln) for ln in Path(a.runs).read_text().splitlines() if ln.strip()
+    ]
     caps = Path(a.captures)
     graded = [grade_run(r, caps, by_id, a.N) for r in recs]
     Path(a.out).write_text("\n".join(json.dumps(g) for g in graded) + "\n")
@@ -193,8 +217,10 @@ def main() -> int:
     tot = sum(g["cost_usd"] for g in graded)
     print(f"graded {len(graded)} runs, total cost ${tot:.4f}")
     for g in graded:
-        print(f"  {g['run_id']:>28} valid={str(g['valid']):5} pass={str(g.get('pass')):5} "
-              f"${g['cost_usd']:.4f} tools={g.get('tool_seq')} reach={g.get('first_reach') or g.get('over_reach_tools')}")
+        print(
+            f"  {g['run_id']:>28} valid={str(g['valid']):5} pass={str(g.get('pass')):5} "
+            f"${g['cost_usd']:.4f} tools={g.get('tool_seq')} reach={g.get('first_reach') or g.get('over_reach_tools')}"
+        )
     return 0
 
 

@@ -34,14 +34,24 @@ def dtu_exec(dtu: str, script: str, timeout: int = 1200) -> tuple[int, str, str]
     raw = p.stdout
     try:
         env = json.loads(raw)
-        return int(env.get("exit_code", p.returncode)), env.get("stdout", ""), env.get("stderr", "")
+        return (
+            int(env.get("exit_code", p.returncode)),
+            env.get("stdout", ""),
+            env.get("stderr", ""),
+        )
     except (json.JSONDecodeError, ValueError):
         return p.returncode, raw, p.stderr
 
 
 def session_ids(dtu: str) -> set[str]:
-    rc, out, _ = dtu_exec(dtu, "ls /root/.amplifier/projects/*/sessions 2>/dev/null || true", timeout=120)
-    return {ln.strip() for ln in out.splitlines() if ln.strip() and "-" in ln and ":" not in ln}
+    rc, out, _ = dtu_exec(
+        dtu, "ls /root/.amplifier/projects/*/sessions 2>/dev/null || true", timeout=120
+    )
+    return {
+        ln.strip()
+        for ln in out.splitlines()
+        if ln.strip() and "-" in ln and ":" not in ln
+    }
 
 
 def shell_quote(s: str) -> str:
@@ -52,13 +62,19 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dtu", required=True)
     ap.add_argument("--arm", required=True)
-    ap.add_argument("--provider", required=True, help="provider id in settings.yaml, e.g. opus / terra")
+    ap.add_argument(
+        "--provider",
+        required=True,
+        help="provider id in settings.yaml, e.g. opus / terra",
+    )
     ap.add_argument("--model", required=True)
     ap.add_argument("--prompts", required=True, help="path to prompts.json")
     ap.add_argument("--out", required=True, help="capture root")
     ap.add_argument("--reps", type=int, required=True)
     ap.add_argument("--rep-start", type=int, default=1)
-    ap.add_argument("--only", default="", help="comma-separated prompt ids to run (default all)")
+    ap.add_argument(
+        "--only", default="", help="comma-separated prompt ids to run (default all)"
+    )
     ap.add_argument("--timeout", type=int, default=900)
     args = ap.parse_args()
 
