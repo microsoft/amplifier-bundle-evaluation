@@ -208,6 +208,198 @@ that is robust to it.
 
 ---
 
-## 5. RESULTS
+## 5. RESULTS — **B is settled on the daily driver, and it is not the blocker**
 
-*(filled in from `analyze.py` at the end of the run — see `raw/analysis.json`)*
+**98 end-to-end `claude-opus-5`/S7-17 runs, 49 per arm, $428.10 of the $930 authority.**
+One analysis, run once, at the end, on the pre-registered plan. No interim look at any
+delta: the extension from 24 to 32 blocks was decided at 09:40Z on clock and budget alone
+and recorded in `RUNLOG.md` before the numbers existed.
+
+### 5.1 The instrument, verified before the numbers are read
+
+| check | result |
+|---|---|
+| configure receipts carrying `MAXTOK_OK max_tokens=90000` | **98 / 98** |
+| head-log arm integrity (every request's `variant` == the run's arm) | **97 / 97 with a head log, 0 mismatches** (1 run predates head-log capture) |
+| stock head, every run | `instr 45,842 ch + tools 38,477 ch` = **84,319 ch**, a single value across all 49 |
+| V1 head, every run | `instr 21,654 ch + tools 26,595 ch` = **48,249 ch**, a single value across all 49 |
+| head cut | **36,070 ch = 42.8%** — against `bji`/`skw3`'s published **44.0% of bytes** |
+| stock head vs `bji`'s published census (84,665 ch) | **0.4% apart** |
+
+**The treatment is on the wire, on the right provider, byte-identical run to run, in every
+one of the 98 runs.**
+
+### 5.2 `$/task` — the frozen rule applied verbatim, PER PROVIDER
+
+> SHIP if $/task improves >=5% with the 95% CI excluding zero; HOLD if within +/-5%;
+> REJECT if it worsens >=5% with CI excluding zero.
+
+| estimator | n stock / V1 | stock | V1 | **Δ** | 95% CI | CI excl. 0 | MDE | **verdict** |
+|---|---|---:|---:|---:|---|---|---:|---|
+| **PRIMARY — VALID only (pre-registered)** | **11 / 8** | $5.7573 | $4.9763 | **−$0.7810 (−13.57%)** | **[−22.27%, −4.86%]** | **YES** | 12.25% | **SHIP** |
+| sensitivity — ALL runs (pre-specified) | 49 / 49 | $4.7163 | $3.9418 | **−$0.7745 (−16.42%)** | **[−23.29%, −9.56%]** | **YES** | 9.68% | **SHIP** |
+| secondary — block-paired (time-trend robust) | 7 pairs | — | — | **−$0.8314 (−14.44%)** | **[−26.83%, −2.06%]** | **YES** | — | **SHIP** |
+
+> ### **Three estimators, three different selections, one sign, one magnitude — and, for the first time anywhere in this program, ALL THREE 95% CIs EXCLUDE ZERO.**
+
+This is the thing `skw3` could not buy and said so: *"at any affordable n only HOLD is
+reachable."* That was true **on terra**, where the effect is −6.9% and n=197/arm is needed.
+It is **not** true on `claude-opus-5`, where the effect is **2× the size of the CI** at
+n=11/8 — exactly the mechanism pre-registered in `PREREGISTRATION.md` §4.1: *required n is
+not a constant, it scales as 1/δ², and δ is 4.2× larger on Anthropic.*
+
+**And the HOLD/SHIP distinction here is not an artefact of low power.** The point estimate
+clears the ±5% threshold by a factor of 2.7 and the CI's near bound (−4.86%) sits at the
+threshold, not near zero.
+
+### 5.3 **`B`, THE WHOLE REMAINING QUESTION — measured, and it is ~ZERO**
+
+`B = Δtotal − D`, with `D = −$0.762/run` taken from `skw3` §3.4 (measured on the wire to 8
+significant figures, not re-estimated here):
+
+```
+Delta_total (primary)  = -$0.7810
+D           (skw3)     = -$0.7620
+B                      = -$0.0190     =  -0.33% of the stock mean
+```
+
+| what `skw3` bounded | value | what this lane measured |
+|---|---:|---|
+| `B` needed for a **wash** on opus-5 | **+16.6%** | **−0.33%** |
+| `B` needed to **cancel `D`** outright | **+21.6%** | **−0.33%** |
+| largest `B` ever observed in this program | **+12.6%** | **−0.33%** |
+
+> ### **`B` is not merely below the wash threshold — it is below ZERO. The lean head does not buy back its head saving with extra work on the daily driver. It does marginally LESS work.**
+
+**Independently corroborated by the pre-registered request-count channel**, which is a
+different measurement of the same quantity and does not pass through dollars at all:
+
+| population | n stock / V1 | stock reqs | V1 reqs | Δ | 95% CI | excl. 0 |
+|---|---|---:|---:|---:|---|---|
+| ALL runs | 48 / 49 | 75.90 | 67.76 | **−8.14 (−10.73%)** | [−15.27%, −6.18%] | **YES** |
+| VALID only | 10 / 8 | 81.60 | 71.88 | **−9.72 (−11.92%)** | [−20.01%, −3.82%] | **YES** |
+
+**This reverses the direction `3d2` observed on terra** (+21.17 requests, **+24.5%**, n=2/3)
+— and that reversal is the entire reason `B` had to be *measured* on Anthropic rather than
+argued across from OpenAI. A `B` extrapolated from terra would have been wrong in sign.
+
+*(The request channel is reported as a **PROXY** and deliberately **not** converted to
+dollars — that conversion is the weakness `skw3` §5 named. The dollar answer is the
+subtraction above, and the two agree in sign and rough magnitude without being the same
+measurement.)*
+
+### 5.4 Co-primary quality — clears, and the within-lane check agrees
+
+**Cited, not re-measured** (`PREREGISTRATION.md` §7): `5zp`'s one-sided 95%
+**LB −7.15 pp** against the frozen **−10 pp** margin (n 11 stock / 12 V1, power 0.82).
+**CLEARS.**
+
+This lane's own S7 recall, as a within-lane consistency check only — **not** a
+re-derivation of the LB:
+
+| arm | n (valid) | mean overall survival |
+|---|---:|---:|
+| stock | 11 | 0.9242 |
+| **V1** | 8 | **0.9479** |
+
+**The treated arm scores higher, not lower.** No sign of a quality regression at this cell.
+
+> ## **BOTH PRIMARIES CLEAR ON `claude-opus-5`. THE RULE FIRES: SHIP.**
+
+### 5.5 The per-provider verdict table — the choice fixed before the data
+
+`PREREGISTRATION.md` §2 fixed **PER-PROVIDER** before any number existed, and it earned its
+keep: the two providers do not return the same verdict, and a pooled statistic would have
+described neither.
+
+| provider | scenario | source | Δ `$/task` | CI excl. 0 | MDE | **verdict** |
+|---|---|---|---:|---|---:|---|
+| **anthropic `claude-opus-5`** | **S7** | **this lane, 98 runs** | **−13.57%** | **YES** | 12.25% | **SHIP** |
+| openai `gpt-5.6-terra` | S7 | `skw3`, free corpus n 10/11 | −2.82% | no | 21.7% | **HOLD — underpowered, not a measured wash** |
+| anthropic `claude-opus-5` | S3 | — | — | — | — | **NOT-POSSIBLE at $930** (§6) |
+| openai `gpt-5.6-terra` | S3 | — | — | — | — | **NOT-POSSIBLE at $930** (§6) |
+
+**Terra was deliberately not re-bought**, and the reason was pre-registered: its own `D` is
+−6.9%, so firing the rule there needs **n = 103.4/arm ≈ 236 launches ≈ $760** — more than
+the residue this lane finished with ($501.90). A partial terra purchase buys a tighter
+HOLD, never a verdict, and `skw3` §1.1 showed that pooling terra runs across calendar
+cohorts is confounded (cohort deltas +3.99% / −20.37%).
+
+### 5.6 Validity, boundaries, and the cell-mismatch finding — measured
+
+| arm | launched | valid | rate | mean boundaries |
+|---|---:|---:|---:|---:|
+| stock | 49 | 11 | **22.4%** | **3.08** |
+| V1 | 49 | 8 | **16.3%** | **3.00** |
+
+Against terra's published S7 figures (`skw3` §7): stock **7.00** boundaries, 1 of 14 below
+the gate; V1 **6.72**, 3 of 18 below.
+
+Two things follow, and the second is the one that matters:
+
+1. **The S7-17 validity gate is calibrated for terra and does not fit `claude-opus-5`.**
+   The same 17 turns produce less than half the boundaries, so ≥5 rejects ~80% of runs.
+   **Falsifier #4 from `PREREGISTRATION.md` §8 fired**, and it is recorded as fired.
+2. **On this cell the gate is very nearly ARM-NEUTRAL — 3.08 vs 3.00 mean boundaries.**
+   That is *not* the terra picture, where the arms differed and the filter demonstrably
+   discarded the cheap V1 runs. Here the filter removes runs from both arms at a similar
+   rate and for the same cell-level reason, which is exactly why the VALID-only primary and
+   the ALL-runs sensitivity land within **2.9 percentage points of each other** (−13.57% vs
+   −16.42%) instead of diverging the way they did on terra (−2.82% vs −7.13%).
+   **The pre-registered primary is not being carried by the filter.**
+
+### 5.7 Cold starts and the contention hazard
+
+No miss-mode signature appeared. Every run's head is byte-identical within its arm across
+all 49 runs, per-run request counts are tight (stock sd 9.51, V1 sd 7.44 on means of 75.9 /
+67.8), and the three estimators — including the **block-paired** one, which is immune both
+to a monotone time trend and to the one un-drained arm switch disclosed in §4 — agree in
+sign and magnitude. **`skw3`'s hazard was designed around rather than measured against**,
+and this lane offers no new evidence on the open eviction-under-contention question
+(`skw3` §6.1 item 1); it remains open and cheap (~$12).
+
+---
+
+## 6. WHAT IS **NOT-POSSIBLE** AT $930, AND WHAT WOULD CLOSE IT
+
+| deliverable | state | why, with the arithmetic |
+|---|---|---|
+| `$/task` with a ±5% CI in **all four cells** | **NOT-POSSIBLE** | **$5,794–$9,596** vs $930 (§1.2). **6.2–10.3× over.** |
+| ±5% CI on the **measured** cell (opus-5/S7) | **NOT-POSSIBLE** | at this cell's own realised sd, n = **55.6/arm** → `2×55.6 / 0.194 validity = 574 launches × $4.33` = **$2,484**. *(Note: **4× cheaper than `skw3`'s blended estimate implies**, because opus-5's realised cv is 0.106 against terra's 0.177 — a useful correction to the program's own cost model.)* |
+| S3, either provider | **NOT-POSSIBLE — dropped in advance, named in `PREREGISTRATION.md` §4.2** | doubles the cell count against an authority already 6.2× short, and `D` is smaller on S3 in both providers |
+| terra/S7 re-measurement | **NOT-POSSIBLE** | n = **103.4/arm → 236 launches × $3.217 = $760** > the **$501.90** residue |
+
+**But note what the ±5% CI was FOR.** It was the instrument the rule needed to fire. **On
+this cell the rule fired anyway**, at n=11/8, because the effect is 13.57% and not 5%. The
+±5% deliverable is NOT-POSSIBLE **and the decision it existed to support has been made.**
+
+---
+
+## 7. WHAT THIS CHANGES
+
+**Changes:**
+
+1. **`B` is measured on Anthropic for the first time and it is ≈ 0 (−0.33%), not the
+   +16.6% a wash would have required.** `00-what-we-know.md` §2l's open question — *"`B`
+   remains unresolved, and remains the reason `Δtotal` cannot be settled at this budget"* —
+   **is closed for `claude-opus-5`/S7.**
+2. **`Δtotal` on the daily driver is −13.57%, CI [−22.27%, −4.86%], and the frozen rule
+   returns SHIP** with the co-primary quality gate cleared (`5zp` LB −7.15 pp).
+3. **The behavioural term has the opposite SIGN on the two providers** (−10.7% requests on
+   opus-5 vs `3d2`'s +24.5% on terra). Extrapolating `B` across providers is not safe, and
+   that is now measured rather than suspected.
+4. **A live harness defect** (§2) that silently invalidates every S7/S5 run launched today,
+   with a fix and a second recommendation for the driver's swallowed exit code.
+5. **`claude-opus-5`/S7 is priced**: **$4.33/launch mean**, 22.4% / 16.3% arm validity,
+   realised cv **0.106** — against `skw3`'s $3.53 estimate and terra's cv 0.177.
+6. **The S7-17 validity gate does not fit `claude-opus-5`** (3.08/3.00 boundaries vs
+   terra's 7.00/6.72) — a calibration item for whoever next runs S7 on Anthropic.
+
+**Does NOT change:**
+
+1. **The terra verdict.** `skw3`'s HOLD at −2.82% stands, still underpowered (MDE 21.7%),
+   still **not** a measured wash. This lane bought no terra runs.
+2. **The shipped default.** `PREREGISTRATION.md` §7 forbids it and `GOAL.md` forbids it.
+   A **$0 CODE item** is filed instead, naming the head files and requiring the Anthropic
+   non-regression guardrail.
+3. **`D`.** Taken from `skw3` unchanged; this lane re-measured `Δtotal`, not `D`.

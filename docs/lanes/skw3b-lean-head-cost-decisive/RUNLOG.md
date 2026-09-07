@@ -68,3 +68,34 @@ Verified on `val-g7h3-b` before any relaunch:
 | # | when | purchase | cumulative before | arithmetic | decision |
 |---|---|---|---:|---|---|
 | 2 | before P1b | **P1b relaunch** of the price/validity smoke with the configure fix, 1 stock then 1 V1 | $3.85 | the $3.85 bought a defect, not a price. Same tripwire: `3.85 + 2 x 6.50 = 16.85 <= 930.00` | **LAUNCH** |
+
+| 3 | 09:40Z, **before any analysis of any delta** | **EXTENSION decided in advance**: if the pre-registered 24-block sequence completes and the budget gate still passes, append **8 more ABBA blocks (b27-b34, `v s s v v s s v`)**. Decided on **clock and budget alone**, exactly as `PREREGISTRATION.md` §6 requires — no interim analysis of the primary endpoint was run, and none will be until the sequence stops. | ~$180 | 8 blocks x 3 launches x $6.72 worst = $161.28; $180 + $161 = $341 <= $930 | **QUEUE** |
+
+---
+
+## STOP DECISION — recorded here, not in the write-up
+
+**SEQUENCE COMPLETE at 14:28:37Z. 98 launches, $428.10 of $930.00. Residue $501.90,
+spendable and deliberately unspent.**
+
+Spending stopped because **no remaining purchase changes a verdict**:
+
+* all three pre-registered estimators already **exclude zero** and agree in sign and
+  magnitude (−13.57% / −16.42% / −14.44%); more `n` on this cell tightens a CI that has
+  already fired;
+* ±5% on this cell needs `2 × 55.6 / 0.194 = 574 launches × $4.33` = **$2,484**;
+* terra/S7 needs `n=103.4/arm → 236 launches × $3.217` = **$760**;
+* the stated four-cell deliverable needs **$5,794–$9,596**.
+
+**The smallest purchase that would advance an open deliverable is $760. $501.90 does not
+buy it.** This is NOT `1ru`'s unspendable-residue situation and must not be read as one —
+the residue is spendable; there is simply nothing worth buying with it.
+
+## Full spend ledger
+
+| # | item | $ |
+|---|---|---:|
+| 1 | `VOID-noconfig-stock-r01` (bought the harness defect, not a datum) | 3.8500 |
+| 2 | P1b smoke: 1 stock $6.72 + 1 V1 $4.03 | 10.7500 |
+| 3 | ABBA blocks b03–b34, 96 launches | 413.5000 |
+| | **cumulative** | **428.1000** |
