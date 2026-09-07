@@ -1,0 +1,40 @@
+--- /home/bkrabach/dev/openai-evals-team-ci/.amplifier/evaluation/scenarios/_harness/configure_cell.py	2026-09-01 03:31:24.582861286 -0700
++++ /home/bkrabach/dev/hw-model-performance/lanes/skw3b-lean-head-cost-decisive/amplifier-bundle-evaluation/docs/lanes/skw3b-lean-head-cost-decisive/configure_cell_g7h3.py	2026-09-06 22:01:34.567375705 -0700
+@@ -35,15 +35,34 @@
+ 
+ 
+ def find_bundle_md() -> str:
++    """g7h3 FIX: return the bundle.md that actually CARRIES `max_tokens:`.
++
++    Upstream `anchors-amp-dev/bundle.md` was refactored into a pure include of
++    `anchors` ("this order reproduces the previously shipped mount plan
++    byte-for-byte ... the DRY change moves no wire bytes"), so the
++    `context.config.max_tokens` line now lives in `bundles/anchors/bundle.md`.
++    The original function hardcoded the anchors-amp-dev path, found a file with
++    no `max_tokens:` line, and exited 5 -- which scripted_driver.py swallows.
++
++    Order is deliberate: anchors-amp-dev FIRST (so a container that still
++    carries the value there behaves exactly as before), anchors as the
++    fallback. Selection is by CONTENT -- a candidate is only accepted if it
++    actually contains the line the caller is about to patch -- so this can
++    never silently pick a file the patch will not apply to.
++    """
++    candidates = []
+     for root in glob.glob("/root/.amplifier/cache/amplifier-foundation-*"):
+         if "skills" in root or "chatgpt" in root:
+             continue
+-        p = f"{root}/bundles/anchors-amp-dev/bundle.md"
++        candidates.append(f"{root}/bundles/anchors-amp-dev/bundle.md")
++        candidates.append(f"{root}/bundles/anchors/bundle.md")
++    for p in candidates:
+         try:
+-            open(p).close()
+-            return p
++            raw = open(p, encoding="utf-8").read()
+         except OSError:
+             continue
++        if re.search(r"^\s*max_tokens:\s*\d+\s*$", raw, flags=re.MULTILINE):
++            return p
+     return ""
+ 
+ 

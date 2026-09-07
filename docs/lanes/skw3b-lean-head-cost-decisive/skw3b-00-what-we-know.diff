@@ -1,0 +1,40 @@
+--- orig.md	2026-09-07 07:49:11.724125059 -0700
++++ new.md	2026-09-07 07:49:11.746546622 -0700
+@@ -228,6 +228,37 @@
+ NOT because a wash was measured**. Both halves must be said. Resolving $/task at +/-5% needs
+ n~184-197/arm = **~$8,964** pooled across four cells.
+ 
++**AMENDED 2026-09-07 [g7h3]: `B` IS NOW MEASURED ON THE DAILY DRIVER, AND IT IS ~ZERO. The
++lean head is a SHIP on `claude-opus-5` by the frozen rule.** `g7h3` bought **98 end-to-end
++claude-opus-5 / S7-17 runs (49/arm, $428.10 of $930)** -- the cell `skw3` flagged as never
++costed. `Delta $/task` = **-13.57%, 95% CI [-22.27%, -4.86%]** (VALID-only primary, n 11/8);
++the ALL-runs sensitivity (n 49/49) gives **-16.42%, CI [-23.29%, -9.56%]** and the
++block-paired estimator **-14.44%, CI [-26.83%, -2.06%]**. **All three exclude zero -- the
++first time in this program.** `skw3`'s "at any affordable n only HOLD is reachable" was true
++**on terra** (effect -6.9%, n=197/arm needed) and is **false on Anthropic**, because
++required n scales as 1/delta^2 and delta is 4.2x larger there: n=11/8 sufficed.
++
++**`B` = Delta_total - D = -$0.7810 - (-$0.762) = -$0.019 = -0.33%** of the stock mean --
++against the **+16.6%** a wash would require and the **+12.6%** largest `B` ever observed.
++Corroborated by an independent channel that never passes through dollars: **requests -8.14
++(-10.73%), CI [-15.27%, -6.18%]**. **NOTE THE SIGN: `3d2` measured +24.5% MORE requests for
++V1 on terra. `B` has the OPPOSITE SIGN on the two providers -- never extrapolate it across
++one.** With `5zp`'s quality co-primary clearing (LB -7.15 pp) **both primaries clear**;
++`g7h3` shipped no default and filed the $0 CODE item **`model_performance-zc6t`**.
++
++**TERRA IS UNCHANGED**: HOLD at -2.82%, MDE 21.7%, still **underpowered rather than a
++measured wash**; firing the rule there needs n=103.4/arm ~ **$760**, which `g7h3`'s $501.90
++residue could not buy. Both S3 cells remain unmeasured.
++
++**TWO INSTRUMENT FACTS FROM THE SAME RUN, both cheap to trip over:**
++1. **`claude-opus-5` fails S7-17's >=5-boundary validity gate in BOTH arms** -- mean
++   boundaries **3.08 stock / 3.00 V1** against terra's 7.00 / 6.72, an ~80% rejection rate.
++   The profile is calibrated for terra. Recalibrate before running S7 on Anthropic again;
++   do NOT re-tune it inside a comparison (SPEC.md 9.1 freezes it).
++2. **opus-5/S7 is now priced**: **$4.3291/launch** mean over 98 launches, realised
++   **cv 0.106** against terra's 0.177 -- so +/-5% on that cell needs **n=55.6/arm ~ $2,484**,
++   roughly **4x cheaper** than the $8,964 blended figure above implies for a single cell.
++
+ **SUPERSEDED (kept for the record):** **⚠ DO NOT READ THIS AS "SHIP THE LEAN HEAD".** `model_performance-3d2` measures it **net MORE
+ EXPENSIVE per run**, untouched here. This bought the QUALITY half only — hold the default change.
+ 
