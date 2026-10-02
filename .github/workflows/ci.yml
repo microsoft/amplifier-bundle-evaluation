@@ -96,3 +96,29 @@ jobs:
 
       - name: Run tests
         run: uv run --frozen pytest tests/ -q --tb=short
+
+  # This example is an offline planner/analyzer, not a paid evaluation runner.
+  # Keep it separate from model-backed examples and benchmark fixture code.
+  routing-evidence:
+    name: Routing evidence starter — Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
+      - name: Run offline contract tests
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: >-
+          uv run --no-project --python ${{ matrix.python-version }}
+          --with pytest --with click --with pyyaml
+          python -m pytest -q -p no:cacheprovider
+          examples/05-routing-matrix-evidence/test_evidence.py
+      - name: Lint offline starter
+        run: uvx ruff@0.15.11 check examples/05-routing-matrix-evidence
+      - name: Check offline starter formatting
+        run: uvx ruff@0.15.11 format --check examples/05-routing-matrix-evidence
